@@ -1,0 +1,10 @@
+[
+  {
+    "id": "kb_001",
+    "name": "HR Policies",
+    "documents": [
+      "leave_policy.pdf",
+      "attendance_policy.pdf"
+    ]
+  }
+]

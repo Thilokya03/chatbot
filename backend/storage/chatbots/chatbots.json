@@ -1,0 +1,10 @@
+[
+  {
+    "id": "cb_001",
+    "name": "HR Assistant",
+    "type": "knowledge_base",
+    "kb_id": "kb_001",
+    "api_key": "generated-key",
+    "created_at": "2026-11-18"
+  }
+]
