@@ -1,9 +1,10 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
 from app.models.models import ChatRequest, ChatResponse
 from app.services.chatbot_service import ChatbotService
 from app.services.cosmos_store import CosmosStore
 from app.services.openai_service import AzureOpenAIService
+from app.utils.auth import get_required_api_key, verify_chatbot_api_key
 
 router = APIRouter(tags=["chat"])
 chatbot_service = ChatbotService()
@@ -12,7 +13,9 @@ cosmos_store = CosmosStore()
 
 
 @router.post("/chat", response_model=ChatResponse)
-def chat(payload: ChatRequest):
+def chat(payload: ChatRequest, x_api_key: str = Depends(get_required_api_key)):
+    verify_chatbot_api_key(payload.chatbot_id, x_api_key)
+
     if not cosmos_store.ensure_connected():
         raise HTTPException(status_code=503, detail=cosmos_store.last_error or "Cosmos DB is unavailable")
 
@@ -51,7 +54,9 @@ def chat(payload: ChatRequest):
 
 
 @router.get("/conversations/{chatbot_id}")
-def get_conversation(chatbot_id: str):
+def get_conversation(chatbot_id: str, x_api_key: str = Depends(get_required_api_key)):
+    verify_chatbot_api_key(chatbot_id, x_api_key)
+
     if not cosmos_store.ensure_connected():
         raise HTTPException(status_code=503, detail=cosmos_store.last_error or "Cosmos DB is unavailable")
 
@@ -62,7 +67,9 @@ def get_conversation(chatbot_id: str):
 
 
 @router.delete("/conversations/{chatbot_id}")
-def clear_conversation(chatbot_id: str):
+def clear_conversation(chatbot_id: str, x_api_key: str = Depends(get_required_api_key)):
+    verify_chatbot_api_key(chatbot_id, x_api_key)
+
     if not cosmos_store.ensure_connected():
         raise HTTPException(status_code=503, detail=cosmos_store.last_error or "Cosmos DB is unavailable")
 

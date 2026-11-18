@@ -19,6 +19,14 @@ class Chatbot(BaseModel):
     created_at: str = Field(default_factory=lambda: datetime.utcnow().date().isoformat())
 
 
+class ChatbotPublic(BaseModel):
+    id: str
+    name: str
+    type: Literal["normal", "knowledge_base"]
+    kb_id: Optional[str] = None
+    created_at: str
+
+
 class KnowledgeBaseCreate(BaseModel):
     name: str
 
@@ -30,6 +38,7 @@ class KnowledgeBase(BaseModel):
 
 
 class KnowledgeBaseUpload(BaseModel):
+    chatbot_id: str
     kb_id: str
     filename: str
 
