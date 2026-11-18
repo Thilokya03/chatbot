@@ -48,3 +48,31 @@ def chat(payload: ChatRequest):
     cosmos_store.upsert_item(cosmos_store.conversation_container_name, conversation)
 
     return ChatResponse(reply=reply)
+
+
+@router.get("/conversations/{chatbot_id}")
+def get_conversation(chatbot_id: str):
+    if not cosmos_store.ensure_connected():
+        raise HTTPException(status_code=503, detail=cosmos_store.last_error or "Cosmos DB is unavailable")
+
+    conversation = cosmos_store.get_item(cosmos_store.conversation_container_name, "chatbot_id", chatbot_id)
+    if not conversation:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+    return conversation
+
+
+@router.delete("/conversations/{chatbot_id}")
+def clear_conversation(chatbot_id: str):
+    if not cosmos_store.ensure_connected():
+        raise HTTPException(status_code=503, detail=cosmos_store.last_error or "Cosmos DB is unavailable")
+
+    conversation = cosmos_store.get_item(cosmos_store.conversation_container_name, "chatbot_id", chatbot_id)
+    if not conversation:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+
+    doc_id = conversation.get("id")
+    if not doc_id:
+        raise HTTPException(status_code=500, detail="Conversation id missing")
+
+    cosmos_store.delete_item(cosmos_store.conversation_container_name, doc_id)
+    return {"message": "Conversation deleted", "chatbot_id": chatbot_id}
