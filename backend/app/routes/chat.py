@@ -1,30 +1,29 @@
-from pathlib import Path
-
 from fastapi import APIRouter, HTTPException
 
 from app.models.models import ChatRequest, ChatResponse
 from app.services.chatbot_service import ChatbotService
-from app.services.json_store import JsonStore
+from app.services.cosmos_store import CosmosStore
 from app.services.openai_service import AzureOpenAIService
 
 router = APIRouter(tags=["chat"])
 chatbot_service = ChatbotService()
 llm_service = AzureOpenAIService()
+cosmos_store = CosmosStore()
 
 
 @router.post("/chat", response_model=ChatResponse)
 def chat(payload: ChatRequest):
+    if not cosmos_store.ensure_connected():
+        raise HTTPException(status_code=503, detail=cosmos_store.last_error or "Cosmos DB is unavailable")
+
     chatbot = chatbot_service.get_chatbot(payload.chatbot_id)
     if not chatbot:
         raise HTTPException(status_code=404, detail="Chatbot not found")
 
-    base_dir = Path(__file__).resolve().parents[2]
-    conversations_file = base_dir / "storage" / "conversations" / "conversations.json"
-
-    conversation = JsonStore.get_record(conversations_file, "chatbot_id", payload.chatbot_id)
+    conversation = cosmos_store.get_item(cosmos_store.conversation_container_name, "chatbot_id", payload.chatbot_id)
     if not conversation:
-        conversation = {"chatbot_id": payload.chatbot_id, "messages": []}
-        JsonStore.create_record(conversations_file, conversation, "chatbot_id")
+        conversation = {"id": payload.chatbot_id, "chatbot_id": payload.chatbot_id, "messages": []}
+        cosmos_store.upsert_item(cosmos_store.conversation_container_name, conversation)
 
     messages = conversation.get("messages", [])
     messages.append({"role": "user", "content": payload.message})
@@ -43,6 +42,9 @@ def chat(payload: ChatRequest):
     reply = llm_service.chat(llm_messages)
 
     messages.append({"role": "assistant", "content": reply})
-    JsonStore.update_record(conversations_file, "chatbot_id", payload.chatbot_id, {"messages": messages})
+    conversation["messages"] = messages
+    if "id" not in conversation:
+        conversation["id"] = payload.chatbot_id
+    cosmos_store.upsert_item(cosmos_store.conversation_container_name, conversation)
 
     return ChatResponse(reply=reply)

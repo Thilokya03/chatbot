@@ -10,7 +10,7 @@ load_dotenv()
 class AzureOpenAIService:
     def __init__(self) -> None:
         self.endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
-        self.api_key = os.getenv("AZURE_OPENAI_KEY")
+        self.api_key = os.getenv("AZURE_OPENAI_KEY") or os.getenv("AZURE_OPENAI_API_KEY")
         self.api_version = os.getenv("AZURE_OPENAI_API_VERSION", "2024-02-01")
         self.deployment = os.getenv("AZURE_OPENAI_DEPLOYMENT")
 
