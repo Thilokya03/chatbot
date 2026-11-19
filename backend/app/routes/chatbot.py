@@ -25,7 +25,9 @@ def list_chatbots():
         {
             "id": chatbot.get("id"),
             "name": chatbot.get("name"),
-            "type": chatbot.get("type")
+            "type": chatbot.get("type"),
+            "kb_id": chatbot.get("kb_id"),
+            "created_at": chatbot.get("created_at"),
         }
         for chatbot in chatbots
     ]

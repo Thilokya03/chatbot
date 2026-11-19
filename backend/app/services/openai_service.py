@@ -13,6 +13,7 @@ class AzureOpenAIService:
         self.api_key = os.getenv("AZURE_OPENAI_KEY") or os.getenv("AZURE_OPENAI_API_KEY")
         self.api_version = os.getenv("AZURE_OPENAI_API_VERSION", "2024-02-01")
         self.deployment = os.getenv("AZURE_OPENAI_DEPLOYMENT")
+        self.embedding_deployment = os.getenv("AZURE_OPENAI_EMBEDDING_DEPLOYMENT")
 
         self.client = None
         if self.endpoint and self.api_key and self.deployment:
@@ -42,3 +43,13 @@ class AzureOpenAIService:
             {"role": "system", "content": "You are a helpful assistant."},
             {"role": "user", "content": prompt},
         ])
+
+    def embed_text(self, text: str) -> List[float]:
+        if not self.client or not self.embedding_deployment:
+            return [0.0] * 8
+
+        response = self.client.embeddings.create(
+            model=self.embedding_deployment,
+            input=text,
+        )
+        return response.data[0].embedding

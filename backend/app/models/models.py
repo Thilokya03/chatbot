@@ -34,7 +34,7 @@ class KnowledgeBaseCreate(BaseModel):
 class KnowledgeBase(BaseModel):
     id: str
     name: str
-    documents: List[str] = Field(default_factory=list)
+    documents: List[dict] = Field(default_factory=list)
 
 
 class KnowledgeBaseUpload(BaseModel):

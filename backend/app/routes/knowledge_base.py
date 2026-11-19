@@ -1,6 +1,12 @@
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException
+from pypdf import PdfReader
+
+try:
+    from docx import Document  # type: ignore
+except Exception:  # pragma: no cover
+    Document = None
 
 from app.models.models import KnowledgeBaseCreate, KnowledgeBaseUpload
 from app.services.chatbot_service import ChatbotService
@@ -8,6 +14,32 @@ from app.utils.auth import get_required_api_key, verify_chatbot_api_key
 
 router = APIRouter(prefix="/knowledge-bases", tags=["knowledge-bases"])
 service = ChatbotService()
+
+
+def _extract_text_from_file(file_path: Path) -> str:
+    extension = file_path.suffix.lower()
+
+    if extension == ".txt":
+        return file_path.read_text(encoding="utf-8", errors="ignore")
+
+    if extension == ".pdf":
+        reader = PdfReader(str(file_path))
+        pages_text = [page.extract_text() or "" for page in reader.pages]
+        return "\n".join(pages_text).strip()
+
+    if extension == ".docx":
+        if not Document:
+            raise HTTPException(status_code=500, detail="python-docx is required for .docx files")
+        doc = Document(str(file_path))
+        return "\n".join(paragraph.text for paragraph in doc.paragraphs).strip()
+
+    if extension == ".doc":
+        raise HTTPException(
+            status_code=400,
+            detail=".doc format is not supported directly. Please upload as .docx, .pdf, or .txt",
+        )
+
+    raise HTTPException(status_code=400, detail="Unsupported file type. Allowed: .pdf, .docx, .doc, .txt")
 
 
 @router.post("")
@@ -34,5 +66,9 @@ def upload_document(payload: KnowledgeBaseUpload, x_api_key: str = Depends(get_r
     if not file_path.exists():
         file_path.write_text("placeholder", encoding="utf-8")
 
-    updated = service.add_document(payload.kb_id, payload.filename)
+    text = _extract_text_from_file(file_path)
+    if not text.strip():
+        raise HTTPException(status_code=400, detail="Could not extract text from the uploaded document")
+
+    updated = service.add_document(payload.kb_id, payload.filename, text)
     return {"message": "Document linked", "knowledge_base": updated}
