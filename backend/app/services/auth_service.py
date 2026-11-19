@@ -18,6 +18,34 @@ class AuthService:
         if not self.cosmos.ensure_connected():
             raise RuntimeError(self.cosmos.last_error or "Cosmos DB is unavailable")
 
+    def initialize_admin(self) -> bool:
+        email = self._normalize_email(os.getenv("ADMIN_EMAIL", ""))
+        password = os.getenv("ADMIN_PASSWORD", "")
+        if not email or not password:
+            return False
+
+        self._ensure_cosmos()
+        existing = self.cosmos.get_item(self.cosmos.user_container_name, "email", email)
+        if existing:
+            if existing.get("role") == "admin":
+                return False
+            existing["role"] = "admin"
+            self.cosmos.upsert_item(self.cosmos.user_container_name, existing)
+            return True
+
+        salt = secrets.token_hex(16)
+        user = {
+            "id": f"usr_{uuid.uuid4().hex[:10]}",
+            "email": email,
+            "name": os.getenv("ADMIN_NAME", "Administrator"),
+            "role": "admin",
+            "password_salt": salt,
+            "password_hash": self._hash_password(password, salt),
+            "created_at": datetime.utcnow().isoformat(),
+        }
+        self.cosmos.upsert_item(self.cosmos.user_container_name, user)
+        return True
+
     @staticmethod
     def _normalize_email(email: str) -> str:
         return (email or "").strip().lower()
@@ -42,6 +70,7 @@ class AuthService:
             "id": f"usr_{uuid.uuid4().hex[:10]}",
             "email": email,
             "name": payload.name,
+            "role": "user",
             "password_salt": salt,
             "password_hash": self._hash_password(payload.password, salt),
             "created_at": datetime.utcnow().isoformat(),

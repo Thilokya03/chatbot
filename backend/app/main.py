@@ -1,3 +1,6 @@
+import logging
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -7,8 +10,25 @@ from app.routes.knowledge_base import router as knowledge_base_router
 from app.routes.auth import router as auth_router
 from app.services.cosmos_store import CosmosStore
 from app.services.openai_service import AzureOpenAIService
+from app.routes.auth import auth_service
 
-app = FastAPI(title="Multi-Tenant Chatbot Platform - Phase 1" ,version="1.0.2")
+logger = logging.getLogger(__name__)
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    try:
+        auth_service.initialize_admin()
+    except RuntimeError as exc:
+        logger.warning("Admin initialization skipped: %s", exc)
+    yield
+
+
+app = FastAPI(
+    title="Multi-Tenant Chatbot Platform - Phase 1",
+    version="1.0.2",
+    lifespan=lifespan,
+)
 
 app.add_middleware(
     CORSMiddleware,

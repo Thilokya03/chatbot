@@ -18,6 +18,7 @@ def _sanitize_user(user: dict) -> dict:
         "id": user.get("id"),
         "email": user.get("email"),
         "name": user.get("name"),
+        "role": user.get("role", "user"),
         "created_at": user.get("created_at"),
     }
 

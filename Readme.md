@@ -52,9 +52,17 @@ AZURE_OPENAI_API_KEY=your-api-key
 AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
 AZURE_OPENAI_DEPLOYMENT=your-chat-deployment-name
 AZURE_OPENAI_EMBEDDING_DEPLOYMENT=your-embedding-deployment-name
+# Optional: create this admin account automatically when the API starts
+ADMIN_EMAIL=admin@example.com
+ADMIN_PASSWORD=use-a-long-random-password
+ADMIN_NAME=Administrator
 ```
 
 Do not commit `.env` or expose the API key.
+
+When `ADMIN_EMAIL` and `ADMIN_PASSWORD` are set, the API creates the admin user
+once at startup. If the email already belongs to a user, that user is promoted
+to the `admin` role without changing their password.
 
 ## Run the API
 
