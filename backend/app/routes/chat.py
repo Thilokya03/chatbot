@@ -35,7 +35,24 @@ def chat(payload: ChatRequest, x_api_key: str = Depends(get_required_api_key)):
     if chatbot.get("type") == "knowledge_base":
         kb_id = chatbot.get("kb_id")
         kb = chatbot_service.get_knowledge_base(kb_id) if kb_id else None
-        docs = ", ".join(kb.get("documents", [])) if kb else ""
+        docs = ""
+        if kb:
+            doc_items = kb.get("documents", [])
+            names = []
+            seen = set()
+            for item in doc_items:
+                if isinstance(item, dict):
+                    name = item.get("filename")
+                elif isinstance(item, str):
+                    name = item
+                else:
+                    name = None
+
+                if name and name not in seen:
+                    seen.add(name)
+                    names.append(name)
+
+            docs = ", ".join(names)
         system_prompt = (
             "You are a knowledge-base assistant. Use available documents when relevant. "
             f"Available docs: {docs or 'none'}."
