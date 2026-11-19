@@ -12,7 +12,10 @@ app = FastAPI(title="Multi-Tenant Chatbot Platform - Phase 1" ,version="1.0.2")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "http://localhost:5173",
+        "https://verbose-space-garbanzo-jxjrvg76vp6cq7j-5174.app.github.dev/"
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
