@@ -1,16 +1,27 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.routes.chat import router as chat_router
 from app.routes.chatbot import router as chatbot_router
 from app.routes.knowledge_base import router as knowledge_base_router
+from app.routes.auth import router as auth_router
 from app.services.cosmos_store import CosmosStore
 from app.services.openai_service import AzureOpenAIService
 
 app = FastAPI(title="Multi-Tenant Chatbot Platform - Phase 1" ,version="1.0.2")
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 app.include_router(chatbot_router)
 app.include_router(knowledge_base_router)
 app.include_router(chat_router)
+app.include_router(auth_router)
     
 
 @app.get("/health")

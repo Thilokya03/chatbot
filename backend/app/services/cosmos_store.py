@@ -20,6 +20,8 @@ class CosmosStore:
         self.chatbot_container_name = os.getenv("COSMOS_CHATBOT_CONTAINER", "chatbots")
         self.conversation_container_name = os.getenv("COSMOS_CONVERSATION_CONTAINER", "conversations")
         self.kb_container_name = os.getenv("COSMOS_KB_CONTAINER", "knowledge_bases")
+        self.user_container_name = os.getenv("COSMOS_USER_CONTAINER", "users")
+        self.session_container_name = os.getenv("COSMOS_SESSION_CONTAINER", "sessions")
         self.client = None
         self.database = None
         self.last_error: Optional[str] = None
@@ -46,6 +48,8 @@ class CosmosStore:
             self._ensure_container(self.chatbot_container_name)
             self._ensure_container(self.conversation_container_name)
             self._ensure_container(self.kb_container_name)
+            self._ensure_container(self.user_container_name)
+            self._ensure_container(self.session_container_name)
             self.last_error = None
             return True
         except Exception as exc:

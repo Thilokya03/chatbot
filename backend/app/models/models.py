@@ -60,3 +60,14 @@ class ChatRequest(BaseModel):
 
 class ChatResponse(BaseModel):
     reply: str
+
+
+class UserCreate(BaseModel):
+    email: str
+    password: str
+    name: Optional[str] = None
+
+
+class UserLogin(BaseModel):
+    email: str
+    password: str
