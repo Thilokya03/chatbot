@@ -1,4 +1,5 @@
 import logging
+import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -13,6 +14,17 @@ from app.services.openai_service import AzureOpenAIService
 from app.routes.auth import auth_service
 
 logger = logging.getLogger(__name__)
+
+cors_origins = [
+    origin.strip().rstrip("/")
+    for origin in os.getenv(
+        "CORS_ORIGINS",
+        "http://localhost:5173,http://localhost:5174,"
+        "https://verbose-space-garbanzo-jxjrvg76vp6cq7j-5173.app.github.dev,"
+        "https://verbose-space-garbanzo-jxjrvg76vp6cq7j-5174.app.github.dev",
+    ).split(",")
+    if origin.strip()
+]
 
 
 @asynccontextmanager
@@ -32,10 +44,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "https://verbose-space-garbanzo-jxjrvg76vp6cq7j-5174.app.github.dev/"
-    ],
+    allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

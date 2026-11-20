@@ -105,4 +105,8 @@ class CosmosStore:
     def delete_item(self, container_name: str, item_id: str) -> None:
         if not self.ensure_connected():
             return
-        self._container(container_name).delete_item(item=item_id, partition_key="default")
+        try:
+            self._container(container_name).delete_item(item=item_id, partition_key="default")
+        except Exception as exc:
+            if exceptions is None or not isinstance(exc, exceptions.CosmosResourceNotFoundError):
+                raise

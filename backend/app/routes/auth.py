@@ -13,6 +13,13 @@ COOKIE_SECURE = os.getenv("COOKIE_SECURE", "false").lower() == "true"
 COOKIE_SAMESITE = os.getenv("COOKIE_SAMESITE", "lax")
 
 
+def _cookie_domain() -> str | None:
+    # GitHub Codespaces forwarded domains need an explicit shared parent domain
+    # so browser cookies are sent from frontend subdomain to backend subdomain.
+    domain = os.getenv("COOKIE_DOMAIN", "").strip()
+    return domain or None
+
+
 def _sanitize_user(user: dict) -> dict:
     return {
         "id": user.get("id"),
@@ -45,6 +52,7 @@ def login(payload: UserLogin, response: Response):
         httponly=True,
         secure=COOKIE_SECURE,
         samesite=COOKIE_SAMESITE,
+        domain=_cookie_domain(),
         path="/",
     )
     return {"ok": True, "user": _sanitize_user(user)}
@@ -54,7 +62,7 @@ def login(payload: UserLogin, response: Response):
 def logout(response: Response, session_id: str = Cookie(default="", alias=SESSION_COOKIE_NAME)):
     if session_id:
         auth_service.delete_session(session_id)
-    response.delete_cookie(key=SESSION_COOKIE_NAME, path="/")
+    response.delete_cookie(key=SESSION_COOKIE_NAME, domain=_cookie_domain(), path="/")
     return {"ok": True}
 
 
