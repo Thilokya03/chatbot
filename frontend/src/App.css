@@ -1,17 +1,163 @@
 @import "tailwindcss";
 
-html,
-body,
-#root {
-  width: 100%;
-  height: 100%;
-  margin: 0;
+.auth-page {
+  min-height: calc(100vh - 5rem);
+  display: grid;
+  place-items: center;
 }
 
-body {
-  background-color: #f8fafc;
-  font-family:
-    Inter,
-    system-ui,
-    sans-serif;
+.auth-card {
+  width: min(460px, 100%);
+  border-radius: 28px;
+  padding: 2rem;
+}
+
+.auth-title {
+  font: 700 2rem/1.1 var(--font-heading);
+  margin: 0 0 0.5rem;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
+
+.auth-subtitle {
+  margin: 0 0 1.2rem;
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+}
+
+.mode-switch {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.55rem;
+  margin-bottom: 1rem;
+}
+
+.mode-switch button,
+.auth-submit,
+.auth-input {
+  border-radius: 14px;
+}
+
+.mode-switch button {
+  border: 1px solid transparent;
+  padding: 0.72rem 0.9rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: color-mix(in srgb, var(--surface-strong) 80%, transparent);
+  transition: all 220ms ease;
+}
+
+.mode-switch button.active {
+  color: #fff;
+  border-color: transparent;
+  background: linear-gradient(135deg, var(--accent), var(--accent-soft));
+  box-shadow: 0 10px 22px color-mix(in srgb, var(--accent) 42%, transparent);
+}
+
+.mode-switch button:hover {
+  transform: translateY(-1px);
+}
+
+.auth-input {
+  width: 100%;
+  margin-bottom: 0.75rem;
+  border: 1px solid color-mix(in srgb, var(--text-secondary) 24%, transparent);
+  background: color-mix(in srgb, var(--surface-strong) 75%, transparent);
+  color: var(--text-primary);
+  padding: 0.82rem 0.86rem;
+  font: 500 0.95rem/1.2 var(--font-body);
+  outline: none;
+  transition: all 180ms ease;
+}
+
+.auth-input::placeholder {
+  color: color-mix(in srgb, var(--text-secondary) 70%, transparent);
+}
+
+.auth-input:focus {
+  border-color: color-mix(in srgb, var(--accent) 55%, white 20%);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+.auth-submit {
+  border: none;
+  width: 100%;
+  padding: 0.86rem;
+  margin-top: 0.2rem;
+  font: 700 0.95rem/1 var(--font-body);
+  letter-spacing: 0.01em;
+  color: #fff;
+  background: linear-gradient(135deg, var(--accent), var(--accent-soft));
+  box-shadow: 0 14px 28px color-mix(in srgb, var(--accent) 44%, transparent);
+  cursor: pointer;
+  transition: all 220ms ease;
+}
+
+.auth-submit:hover {
+  transform: translateY(-1px);
+}
+
+.auth-submit:disabled {
+  opacity: 0.72;
+  cursor: default;
+}
+
+.auth-error {
+  margin-top: 0.9rem;
+  color: var(--error);
+  font-size: 0.87rem;
+}
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  margin-top: 1.3rem;
+}
+
+.dashboard-card {
+  border-radius: 20px;
+  padding: 1.15rem;
+  min-height: 144px;
+}
+
+.dashboard-card h2 {
+  margin: 0;
+  font: 700 1.07rem/1.2 var(--font-heading);
+  color: var(--text-primary);
+}
+
+.dashboard-card p {
+  margin-top: 0.55rem;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.dashboard-title {
+  margin: 0;
+  font: 700 2rem/1.1 var(--font-heading);
+  color: var(--text-primary);
+}
+
+.dashboard-note {
+  color: var(--text-secondary);
+  margin: 0.4rem 0 0;
+}
+
+@media (max-width: 1000px) {
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .auth-card {
+    padding: 1.2rem;
+    border-radius: 20px;
+  }
+
+  .auth-title,
+  .dashboard-title {
+    font-size: 1.6rem;
+  }
 }

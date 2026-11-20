@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { loginUser, registerUser } from "../api/auth";
+import "../App.css";
 
 export default function LoginPage() {
   const navigate =
@@ -67,46 +68,23 @@ export default function LoginPage() {
   }
 
   return (
-    <div
-      className="
-      h-screen
-      flex
-      items-center
-      justify-center
-      bg-slate-100
-    "
-    >
-      <div
-        className="
-        bg-white
-        p-8
-        rounded-lg
-        shadow
-        w-96
-      "
-      >
-        <h1
-          className="
-          text-2xl
-          font-bold
-          mb-5
-        "
-        >
+    <div className="auth-page page-enter">
+      <div className="auth-card glass-panel stagger-in" style={{ "--delay": "60ms" } as React.CSSProperties}>
+        <h1 className="auth-title stagger-in" style={{ "--delay": "120ms" } as React.CSSProperties}>
           {mode === "signin" ? "Sign In" : "Sign Up"}
         </h1>
+        <p className="auth-subtitle stagger-in" style={{ "--delay": "150ms" } as React.CSSProperties}>
+          Access your workspace and manage chatbots faster.
+        </p>
 
-        <div className="flex gap-2 mb-4">
+        <div className="mode-switch stagger-in" style={{ "--delay": "180ms" } as React.CSSProperties}>
           <button
             type="button"
             onClick={() => {
               setMode("signin");
               setError("");
             }}
-            className={`p-2 rounded w-full ${
-              mode === "signin"
-                ? "bg-blue-600 text-white"
-                : "bg-slate-200 text-slate-700"
-            }`}
+            className={mode === "signin" ? "active" : ""}
           >
             Sign In
           </button>
@@ -117,11 +95,7 @@ export default function LoginPage() {
               setMode("signup");
               setError("");
             }}
-            className={`p-2 rounded w-full ${
-              mode === "signup"
-                ? "bg-blue-600 text-white"
-                : "bg-slate-200 text-slate-700"
-            }`}
+            className={mode === "signup" ? "active" : ""}
           >
             Sign Up
           </button>
@@ -129,12 +103,8 @@ export default function LoginPage() {
 
         {mode === "signup" && (
           <input
-            className="
-            border
-            p-2
-            w-full
-            mb-3
-          "
+            className="auth-input stagger-in"
+            style={{ "--delay": "210ms" } as React.CSSProperties}
             placeholder="Name (optional)"
             onChange={(e) =>
               setName(
@@ -145,12 +115,8 @@ export default function LoginPage() {
         )}
 
         <input
-          className="
-          border
-          p-2
-          w-full
-          mb-3
-        "
+          className="auth-input stagger-in"
+          style={{ "--delay": "240ms" } as React.CSSProperties}
           placeholder="Email"
           onChange={(e) =>
             setEmail(
@@ -161,12 +127,8 @@ export default function LoginPage() {
 
         <input
           type="password"
-          className="
-          border
-          p-2
-          w-full
-          mb-4
-        "
+          className="auth-input stagger-in"
+          style={{ "--delay": "270ms" } as React.CSSProperties}
           placeholder="Password"
           onChange={(e) =>
             setPassword(
@@ -182,14 +144,8 @@ export default function LoginPage() {
               : handleRegister
           }
           disabled={loading}
-          className="
-          bg-blue-600
-          text-white
-          p-2
-          rounded
-          w-full
-          disabled:opacity-70
-        "
+          className="auth-submit stagger-in"
+          style={{ "--delay": "300ms" } as React.CSSProperties}
         >
           {loading
             ? "Please wait..."
@@ -199,7 +155,7 @@ export default function LoginPage() {
         </button>
 
         {error && (
-          <p className="text-red-600 text-sm mt-3">{error}</p>
+          <p className="auth-error">{error}</p>
         )}
       </div>
     </div>
