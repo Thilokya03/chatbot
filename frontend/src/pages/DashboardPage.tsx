@@ -59,7 +59,6 @@ export default function DashboardPage({ theme, onThemeChange }: DashboardPagePro
   const [selectedConversationId, setSelectedConversationId] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [chatInput, setChatInput] = useState("");
-  const [chatbotSearch, setChatbotSearch] = useState("");
   const [conversationSearch, setConversationSearch] = useState("");
 
   const [newBotName, setNewBotName] = useState("");
@@ -100,10 +99,6 @@ export default function DashboardPage({ theme, onThemeChange }: DashboardPagePro
       .slice(0, 2)
       .toUpperCase();
   }, [selectedChatbot]);
-  const filteredChatbots = useMemo(
-    () => chatbots.filter((bot) => bot.name.toLowerCase().includes(chatbotSearch.trim().toLowerCase())),
-    [chatbots, chatbotSearch],
-  );
   const filteredConversations = useMemo(
     () => conversations.filter((conversation) =>
       (conversation.title || "New chat").toLowerCase().includes(conversationSearch.trim().toLowerCase()),
@@ -466,10 +461,30 @@ export default function DashboardPage({ theme, onThemeChange }: DashboardPagePro
           <span><strong>orbit</strong><small>AI workspace</small></span>
         </a>
         <div className="workspace-topbar-center">
-          <span className="workspace-status-dot" />
-          Your personal assistant studio
+          <label className="assistant-picker-wrap">
+            <span className="workspace-status-dot" />
+            <select
+              className="assistant-picker"
+              aria-label="Choose assistant"
+              value={selectedChatbotId}
+              onChange={(event) => void handleSelectChatbot(event.target.value)}
+              disabled={chatbots.length === 0 || submitting}
+            >
+              {chatbots.length === 0 && <option value="">No assistants yet</option>}
+              {chatbots.map((bot) => <option key={bot.id} value={bot.id}>{bot.name}</option>)}
+            </select>
+          </label>
         </div>
         <div className="dashboard-actions">
+          <button
+            type="button"
+            className="icon-btn"
+            aria-label={settingsOpen ? "Close workspace settings" : "Open workspace settings"}
+            title={settingsOpen ? "Close workspace settings" : "Workspace settings"}
+            onClick={() => setSettingsOpen((open) => !open)}
+          >
+            <Settings2 size={17} />
+          </button>
           <button
             type="button"
             className="icon-btn"
@@ -493,216 +508,8 @@ export default function DashboardPage({ theme, onThemeChange }: DashboardPagePro
       )}
 
       <div className={`chat-workspace ${sidebarOpen ? "" : "sidebar-collapsed"} ${settingsOpen ? "" : "settings-closed"}`}>
-        <aside className="chat-sidebar workspace-panel" aria-label="Assistant navigation">
-          <div className="sidebar-section-heading">
-            <span className="count-pill" aria-label={`${ownedChatbotCount} of 10 assistants`} title={`${ownedChatbotCount} of 10 assistants`}>
-              {ownedChatbotCount}/10
-            </span>
-            <button
-              type="button"
-              className="icon-btn subtle"
-              onClick={() => void refreshChatbots()}
-              disabled={loadingChatbots}
-              aria-label="Refresh assistants"
-              title="Refresh assistants"
-            >
-              <RefreshCw size={16} className={loadingChatbots ? "spin" : ""} />
-            </button>
-          </div>
-
-          <label className="search-field">
-            <Search size={16} aria-hidden="true" />
-            <input
-              aria-label="Search assistants"
-              placeholder="Find an assistant"
-              value={chatbotSearch}
-              onChange={(event) => setChatbotSearch(event.target.value)}
-            />
-          </label>
-
-          {loadingChatbots && <p className="sidebar-hint">Loading your assistants…</p>}
-          {!loadingChatbots && filteredChatbots.length === 0 && (
-            <div className="sidebar-empty">
-              <span className="empty-icon"><Bot size={19} /></span>
-              <strong>{chatbots.length ? "No matches" : "A space for ideas"}</strong>
-              <span>{chatbots.length ? "Try another search." : "Create your first assistant below."}</span>
-            </div>
-          )}
-          <nav className="chatbot-list" aria-label="Your assistants">
-            {filteredChatbots.map((bot, index) => (
-              <button
-                type="button"
-                key={bot.id}
-                className={`chatbot-list-item ${bot.id === selectedChatbotId ? "selected" : ""}`}
-                onClick={() => void handleSelectChatbot(bot.id)}
-                disabled={submitting}
-              >
-                <span className={`assistant-icon assistant-icon-${index % 4}`}><Bot size={18} /></span>
-                <span className="assistant-item-copy">
-                  <strong>{bot.name}</strong>
-                  <small>{bot.type === "knowledge_base" ? "Knowledge assistant" : "General assistant"}</small>
-                </span>
-                <span className="assistant-item-indicator" />
-              </button>
-            ))}
-          </nav>
-
-          <details className="management-panel">
-            <summary><span className="manage-icon"><Plus size={16} /></span><span>Create assistant</span><ChevronDown size={15} /></summary>
-            <form onSubmit={handleCreateChatbot}>
-              <label className="field-label" htmlFor="new-bot-name">Assistant name</label>
-              <input
-                id="new-bot-name"
-                className="auth-input"
-                placeholder="e.g. Research buddy"
-                value={newBotName}
-                onChange={(event) => setNewBotName(event.target.value)}
-                maxLength={100}
-                required
-              />
-              <label className="field-label" htmlFor="new-bot-type">Assistant type</label>
-              <select
-                id="new-bot-type"
-                className="auth-input"
-                value={newBotType}
-                onChange={(event) => setNewBotType(event.target.value as CreateChatbotRequest["type"])}
-              >
-                <option value="normal">General assistant</option>
-                <option value="knowledge_base">Knowledge assistant</option>
-              </select>
-              {newBotType === "knowledge_base" && (
-                <>
-                  <input
-                    className="auth-input"
-                    placeholder="Knowledge base ID (optional)"
-                    value={newBotKbId}
-                    onChange={(event) => setNewBotKbId(event.target.value)}
-                    aria-label="Knowledge base ID"
-                  />
-                  <span className="sidebar-hint">Leave blank to create a fresh document library.</span>
-                </>
-              )}
-              <button type="submit" className="primary-btn" disabled={submitting || ownedChatbotCount >= 10}>
-                {submitting ? "Creating…" : "Create assistant"}
-              </button>
-            </form>
-          </details>
-
-          <details className="management-panel knowledge-management">
-            <summary><span className="manage-icon"><Database size={16} /></span><span>Knowledge sources</span><ChevronDown size={15} /></summary>
-            <form onSubmit={handleCreateKnowledgeBase}>
-              <label className="field-label" htmlFor="new-kb-name">New knowledge base</label>
-              <input
-                id="new-kb-name"
-                className="auth-input"
-                placeholder="Knowledge base name"
-                value={newKbName}
-                onChange={(event) => setNewKbName(event.target.value)}
-              />
-              <button type="submit" className="secondary-btn" disabled={submitting}>Create knowledge base</button>
-            </form>
-            {newKbId && <p className="kb-created">Created ID <code>{newKbId}</code></p>}
-            <form onSubmit={handleUploadDocument}>
-              <span className="field-label">Upload to the selected knowledge chatbot</span>
-              <label
-                className="document-dropzone"
-                onDragOver={(event) => event.preventDefault()}
-                onDrop={(event) => {
-                  event.preventDefault();
-                  setUploadFile(event.dataTransfer.files[0] ?? null);
-                }}
-              >
-                <input
-                  type="file"
-                  accept=".pdf,.docx,.txt"
-                  onChange={(event) => {
-                    setUploadFile(event.target.files?.[0] ?? null);
-                    event.currentTarget.value = "";
-                  }}
-                  disabled={selectedChatbot?.type !== "knowledge_base"}
-                  aria-label="Choose a PDF, DOCX or TXT document"
-                />
-                <Database size={18} />
-                <span>{uploadFile?.name ?? "Drop a file here or browse"}</span>
-                <small>PDF, DOCX or TXT · 10 MB max</small>
-              </label>
-              <button
-                type="submit"
-                className="secondary-btn"
-                disabled={submitting || selectedChatbot?.type !== "knowledge_base" || !uploadFile}
-              >
-                Upload document
-              </button>
-              {!selectedChatbot && <span className="sidebar-hint">Select a knowledge chatbot first.</span>}
-            </form>
-          </details>
-
-          <details className="management-panel">
-            <summary><span className="manage-icon"><Sparkles size={16} /></span><span>Account settings</span><ChevronDown size={15} /></summary>
-            <form onSubmit={handleUpdateName}>
-              <label className="field-label" htmlFor="account-name">Display name</label>
-              <input
-                id="account-name"
-                className="auth-input"
-                value={accountName}
-                onChange={(event) => setAccountName(event.target.value)}
-                required
-              />
-              <button type="submit" className="secondary-btn" disabled={submitting}>Update name</button>
-            </form>
-            <form onSubmit={handleUpdatePassword}>
-              <label className="field-label" htmlFor="current-password">Current password</label>
-              <input
-                id="current-password"
-                className="auth-input"
-                type="password"
-                value={currentPassword}
-                onChange={(event) => setCurrentPassword(event.target.value)}
-                required
-              />
-              <label className="field-label" htmlFor="new-password">New password</label>
-              <input
-                id="new-password"
-                className="auth-input"
-                type="password"
-                value={newPassword}
-                onChange={(event) => setNewPassword(event.target.value)}
-                required
-              />
-              <button type="submit" className="secondary-btn" disabled={submitting}>Change password</button>
-            </form>
-          </details>
+        <aside className="chat-sidebar workspace-panel" aria-label="Chat history and sign out">
           <div className="sidebar-footer">
-            <div className="user-chip sidebar-user-chip">
-              <span className="user-avatar">{(user.name || user.email).slice(0, 1).toUpperCase()}</span>
-              <span className="user-email">{user.name || user.email}</span>
-            </div>
-            <button
-              type="button"
-              className="sidebar-utility-button"
-              aria-label={settingsOpen ? "Hide workspace settings" : "Show workspace settings"}
-              onClick={() => setSettingsOpen((value) => !value)}
-            >
-              <Settings2 size={16} />
-              <span>{settingsOpen ? "Close workspace settings" : "Workspace settings"}</span>
-            </button>
-            <div className="sidebar-theme-control">
-              <span className="sidebar-theme-label">Appearance</span>
-              <div className="theme-switcher sidebar-theme-switcher" role="group" aria-label="Choose appearance">
-                {themeOptions.map((option) => (
-                  <button
-                    key={option.value}
-                    type="button"
-                    onClick={() => onThemeChange(option.value)}
-                    className={theme === option.value ? "is-active" : ""}
-                    aria-pressed={theme === option.value}
-                  >
-                    {option.value === "light-chat" ? <Sun size={14} /> : <Moon size={14} />}
-                    {option.label}
-                  </button>
-                ))}
-              </div>
-            </div>
             <button type="button" onClick={handleLogout} className="sidebar-utility-button sidebar-logout-button">
               <LogOut size={16} />
               <span>Log out</span>
@@ -805,7 +612,7 @@ export default function DashboardPage({ theme, onThemeChange }: DashboardPagePro
                 <div className="welcome-orb"><Sparkles size={28} /></div>
                 <span className="eyebrow">WELCOME TO ORBIT</span>
                 <h3>Good conversations<br />start with a question.</h3>
-                <p>Choose an assistant on the left, then start a fresh chat or pick up where you left off.</p>
+                <p>Choose an assistant from the header, then start a fresh chat or pick up where you left off.</p>
               </div>
             )}
             {!loadingMessages && selectedChatbot && !selectedConversationId && (
@@ -903,6 +710,166 @@ export default function DashboardPage({ theme, onThemeChange }: DashboardPagePro
                 <X size={16} />
               </button>
             </div>
+
+            <div className="sidebar-section-heading">
+              <span className="count-pill" aria-label={`${ownedChatbotCount} of 10 assistants`} title={`${ownedChatbotCount} of 10 assistants`}>
+                {ownedChatbotCount}/10 assistants
+              </span>
+              <button
+                type="button"
+                className="icon-btn subtle"
+                onClick={() => void refreshChatbots()}
+                disabled={loadingChatbots}
+                aria-label="Refresh assistants"
+                title="Refresh assistants"
+              >
+                <RefreshCw size={16} className={loadingChatbots ? "spin" : ""} />
+              </button>
+            </div>
+
+            <details className="management-panel" open>
+              <summary><span className="manage-icon"><Plus size={16} /></span><span>Create assistant</span><ChevronDown size={15} /></summary>
+              <form onSubmit={handleCreateChatbot}>
+                <label className="field-label" htmlFor="new-bot-name">Assistant name</label>
+                <input
+                  id="new-bot-name"
+                  className="auth-input"
+                  placeholder="e.g. Research buddy"
+                  value={newBotName}
+                  onChange={(event) => setNewBotName(event.target.value)}
+                  maxLength={100}
+                  required
+                />
+                <label className="field-label" htmlFor="new-bot-type">Assistant type</label>
+                <select
+                  id="new-bot-type"
+                  className="auth-input"
+                  value={newBotType}
+                  onChange={(event) => setNewBotType(event.target.value as CreateChatbotRequest["type"])}
+                >
+                  <option value="normal">General assistant</option>
+                  <option value="knowledge_base">Knowledge assistant</option>
+                </select>
+                {newBotType === "knowledge_base" && (
+                  <>
+                    <input
+                      className="auth-input"
+                      placeholder="Knowledge base ID (optional)"
+                      value={newBotKbId}
+                      onChange={(event) => setNewBotKbId(event.target.value)}
+                      aria-label="Knowledge base ID"
+                    />
+                    <span className="sidebar-hint">Leave blank to create a fresh document library.</span>
+                  </>
+                )}
+                <button type="submit" className="primary-btn" disabled={submitting || ownedChatbotCount >= 10}>
+                  {submitting ? "Creating…" : "Create assistant"}
+                </button>
+              </form>
+            </details>
+
+            <details className="management-panel knowledge-management">
+              <summary><span className="manage-icon"><Database size={16} /></span><span>Knowledge sources</span><ChevronDown size={15} /></summary>
+              <form onSubmit={handleCreateKnowledgeBase}>
+                <label className="field-label" htmlFor="new-kb-name">New knowledge base</label>
+                <input
+                  id="new-kb-name"
+                  className="auth-input"
+                  placeholder="Knowledge base name"
+                  value={newKbName}
+                  onChange={(event) => setNewKbName(event.target.value)}
+                />
+                <button type="submit" className="secondary-btn" disabled={submitting}>Create knowledge base</button>
+              </form>
+              {newKbId && <p className="kb-created">Created ID <code>{newKbId}</code></p>}
+              <form onSubmit={handleUploadDocument}>
+                <span className="field-label">Upload to the selected knowledge chatbot</span>
+                <label
+                  className="document-dropzone"
+                  onDragOver={(event) => event.preventDefault()}
+                  onDrop={(event) => {
+                    event.preventDefault();
+                    setUploadFile(event.dataTransfer.files[0] ?? null);
+                  }}
+                >
+                  <input
+                    type="file"
+                    accept=".pdf,.docx,.txt"
+                    onChange={(event) => {
+                      setUploadFile(event.target.files?.[0] ?? null);
+                      event.currentTarget.value = "";
+                    }}
+                    disabled={selectedChatbot?.type !== "knowledge_base"}
+                    aria-label="Choose a PDF, DOCX or TXT document"
+                  />
+                  <Database size={18} />
+                  <span>{uploadFile?.name ?? "Drop a file here or browse"}</span>
+                  <small>PDF, DOCX or TXT · 10 MB max</small>
+                </label>
+                <button
+                  type="submit"
+                  className="secondary-btn"
+                  disabled={submitting || selectedChatbot?.type !== "knowledge_base" || !uploadFile}
+                >
+                  Upload document
+                </button>
+                {!selectedChatbot && <span className="sidebar-hint">Select a knowledge chatbot first.</span>}
+              </form>
+            </details>
+
+            <details className="management-panel">
+              <summary><span className="manage-icon"><Sparkles size={16} /></span><span>Account settings</span><ChevronDown size={15} /></summary>
+              <form onSubmit={handleUpdateName}>
+                <label className="field-label" htmlFor="account-name">Display name</label>
+                <input
+                  id="account-name"
+                  className="auth-input"
+                  value={accountName}
+                  onChange={(event) => setAccountName(event.target.value)}
+                  required
+                />
+                <button type="submit" className="secondary-btn" disabled={submitting}>Update name</button>
+              </form>
+              <form onSubmit={handleUpdatePassword}>
+                <label className="field-label" htmlFor="current-password">Current password</label>
+                <input
+                  id="current-password"
+                  className="auth-input"
+                  type="password"
+                  value={currentPassword}
+                  onChange={(event) => setCurrentPassword(event.target.value)}
+                  required
+                />
+                <label className="field-label" htmlFor="new-password">New password</label>
+                <input
+                  id="new-password"
+                  className="auth-input"
+                  type="password"
+                  value={newPassword}
+                  onChange={(event) => setNewPassword(event.target.value)}
+                  required
+                />
+                <button type="submit" className="secondary-btn" disabled={submitting}>Change password</button>
+              </form>
+            </details>
+
+            <details className="management-panel">
+              <summary><span className="manage-icon"><Sun size={16} /></span><span>Appearance</span><ChevronDown size={15} /></summary>
+              <div className="theme-switcher sidebar-theme-switcher" role="group" aria-label="Choose appearance">
+                {themeOptions.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => onThemeChange(option.value)}
+                    className={theme === option.value ? "is-active" : ""}
+                    aria-pressed={theme === option.value}
+                  >
+                    {option.value === "light-chat" ? <Sun size={14} /> : <Moon size={14} />}
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </details>
 
             <details className="management-panel" open>
               <summary><span className="manage-icon"><Bot size={16} /></span><span>Chatbot settings</span><ChevronDown size={15} /></summary>

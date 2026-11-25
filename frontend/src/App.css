@@ -2257,7 +2257,8 @@
 .app-shell-dashboard .sidebar-history {
   order: 1;
   display: flex;
-  min-height: 120px;
+  min-height: 0;
+  flex: 1;
   flex-direction: column;
   gap: 0.65rem;
   padding-top: 0.8rem;
@@ -2269,7 +2270,8 @@
 }
 
 .app-shell-dashboard .sidebar-history .conversation-list {
-  max-height: 180px;
+  min-height: 0;
+  flex: 1;
   overflow-y: auto;
 }
 
@@ -2314,6 +2316,31 @@
   box-shadow: none;
 }
 
+.assistant-picker-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.assistant-picker {
+  max-width: min(30vw, 260px);
+  border: 0;
+  outline: 0;
+  color: var(--text-primary);
+  background: transparent;
+  font: 700 0.82rem/1.3 var(--font-body);
+  cursor: pointer;
+}
+
+.assistant-picker:disabled {
+  cursor: default;
+}
+
+.assistant-picker option {
+  color: var(--text-primary);
+  background: var(--panel);
+}
+
 @media (max-width: 900px) {
   .app-shell-dashboard .chat-workspace,
   .app-shell-dashboard .chat-workspace.settings-closed {
@@ -2351,6 +2378,19 @@
     max-height: 42vh;
     border-right: 0;
     border-bottom: 1px solid var(--line);
+  }
+
+  .app-shell-dashboard .workspace-topbar-center {
+    display: flex;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+  }
+
+  .app-shell-dashboard .assistant-picker {
+    max-width: 30vw;
+    font-size: 0.7rem;
   }
 
   .app-shell-dashboard .chat-workspace.sidebar-collapsed,
