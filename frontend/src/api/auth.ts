@@ -16,3 +16,10 @@ export const logoutUser = () =>
 
 export const me = () =>
   api.get("/auth/me");
+
+export type AuthUser = {
+  id: string;
+  email: string;
+  name?: string;
+  role?: "admin" | "user";
+};

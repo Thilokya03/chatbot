@@ -36,16 +36,24 @@ def register(payload: UserCreate):
         user = auth_service.create_user(payload)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
     return {"ok": True, "user": _sanitize_user(user)}
 
 
 @router.post("/login")
 def login(payload: UserLogin, response: Response):
-    user = auth_service.authenticate(payload.email, payload.password)
+    try:
+        user = auth_service.authenticate(payload.email, payload.password)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
     if not user:
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
-    session = auth_service.create_session(user["id"])
+    try:
+        session = auth_service.create_session(user["id"])
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
     response.set_cookie(
         key=SESSION_COOKIE_NAME,
         value=session["session_id"],
@@ -61,7 +69,10 @@ def login(payload: UserLogin, response: Response):
 @router.post("/logout")
 def logout(response: Response, session_id: str = Cookie(default="", alias=SESSION_COOKIE_NAME)):
     if session_id:
-        auth_service.delete_session(session_id)
+        try:
+            auth_service.delete_session(session_id)
+        except RuntimeError as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
     response.delete_cookie(key=SESSION_COOKIE_NAME, domain=_cookie_domain(), path="/")
     return {"ok": True}
 
@@ -71,11 +82,17 @@ def me(session_id: str = Cookie(default="", alias=SESSION_COOKIE_NAME)):
     if not session_id:
         raise HTTPException(status_code=401, detail="Not authenticated")
 
-    session = auth_service.get_session(session_id)
+    try:
+        session = auth_service.get_session(session_id)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
     if not session:
         raise HTTPException(status_code=401, detail="Invalid session")
 
-    user = auth_service.get_user_by_id(session["user_id"])
+    try:
+        user = auth_service.get_user_by_id(session["user_id"])
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
 

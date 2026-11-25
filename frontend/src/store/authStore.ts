@@ -18,3 +18,5 @@ export const useAuthStore =
     setUser: (user) =>
       set({ user }),
   }));
+
+export type { User };

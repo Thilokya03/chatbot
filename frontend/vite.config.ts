@@ -2,6 +2,8 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 
+const backendUrl = process.env.BACKEND_URL || "http://localhost:8000";
+
 export default defineConfig({
   plugins: [react(),
     tailwindcss(),
@@ -13,32 +15,32 @@ export default defineConfig({
 
     proxy: {
       "/auth": {
-        target: "http://localhost:8000",
+        target: backendUrl,
         changeOrigin: true,
       },
 
       "/chatbots": {
-        target: "http://localhost:8000",
+        target: backendUrl,
         changeOrigin: true,
       },
 
       "/chat": {
-        target: "http://localhost:8000",
+        target: backendUrl,
         changeOrigin: true,
       },
 
       "/knowledge-bases": {
-        target: "http://localhost:8000",
+        target: backendUrl,
         changeOrigin: true,
       },
 
       "/conversations": {
-        target: "http://localhost:8000",
+        target: backendUrl,
         changeOrigin: true,
       },
 
       "/health": {
-        target: "http://localhost:8000",
+        target: backendUrl,
         changeOrigin: true,
       },
     },

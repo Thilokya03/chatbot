@@ -4,22 +4,22 @@ import {
   Routes,
 } from "react-router-dom";
 import { useEffect, useState } from "react";
+import { Moon, Sun } from "lucide-react";
 
 import LoginPage from "./pages/LoginPage";
 import DashboardPage from "./pages/DashboardPage";
 
-type ThemeMode = "light-glass" | "dark-glass" | "sunset-glass";
+type ThemeMode = "light-chat" | "dark-chat";
 
 const themeOptions: Array<{ value: ThemeMode; label: string }> = [
-  { value: "light-glass", label: "Light Glass" },
-  { value: "dark-glass", label: "Dark Glass" },
-  { value: "sunset-glass", label: "Sunset Glass" },
+  { value: "light-chat", label: "Light" },
+  { value: "dark-chat", label: "Dark" },
 ];
 
 function App() {
   const [theme, setTheme] = useState<ThemeMode>(() => {
     const savedTheme = localStorage.getItem("ui-theme") as ThemeMode | null;
-    return savedTheme ?? "light-glass";
+    return savedTheme === "dark-chat" ? "dark-chat" : "light-chat";
   });
 
   useEffect(() => {
@@ -37,7 +37,9 @@ function App() {
               type="button"
               onClick={() => setTheme(option.value)}
               className={theme === option.value ? "is-active" : ""}
+              aria-pressed={theme === option.value}
             >
+              {option.value === "light-chat" ? <Sun size={14} /> : <Moon size={14} />}
               {option.label}
             </button>
           ))}

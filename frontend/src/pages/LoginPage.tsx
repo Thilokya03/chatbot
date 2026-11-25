@@ -1,67 +1,37 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { loginUser, registerUser } from "../api/auth";
+import { getApiErrorMessage } from "../api/client";
+import { useAuthStore } from "../store/authStore";
 import "../App.css";
 
 export default function LoginPage() {
-  const navigate =
-    useNavigate();
+  const navigate = useNavigate();
+  const setUser = useAuthStore((state) => state.setUser);
+  const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  const [mode, setMode] =
-    useState<"signin" | "signup">("signin");
-
-  const [name, setName] =
-    useState("");
-
-  const [email, setEmail] =
-    useState("");
-
-  const [password, setPassword] =
-    useState("");
-
-  const [loading, setLoading] =
-    useState(false);
-
-  const [error, setError] =
-    useState("");
-
-  async function handleLogin() {
+  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
     setError("");
     setLoading(true);
 
     try {
-      await loginUser({
-        email,
-        password,
-      });
-
+      if (mode === "signup") {
+        await registerUser({ name: name.trim() || undefined, email: email.trim(), password });
+      }
+      const { data } = await loginUser({ email: email.trim(), password });
+      setUser(data.user);
       navigate("/dashboard");
-    } catch {
-      setError("Login failed. Check your email and password.");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function handleRegister() {
-    setError("");
-    setLoading(true);
-
-    try {
-      await registerUser({
-        name: name || undefined,
-        email,
-        password,
-      });
-
-      await loginUser({
-        email,
-        password,
-      });
-
-      navigate("/dashboard");
-    } catch {
-      setError("Sign up failed. This email may already be registered.");
+    } catch (requestError) {
+      setError(getApiErrorMessage(
+        requestError,
+        mode === "signin" ? "Login failed. Check your email and password." : "Could not create your account.",
+      ));
     } finally {
       setLoading(false);
     }
@@ -101,58 +71,49 @@ export default function LoginPage() {
           </button>
         </div>
 
-        {mode === "signup" && (
+        <form onSubmit={handleSubmit}>
+          {mode === "signup" && (
+            <input
+              className="auth-input stagger-in"
+              style={{ "--delay": "210ms" } as React.CSSProperties}
+              placeholder="Name (optional)"
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+            />
+          )}
+
           <input
+            type="email"
+            autoComplete="email"
             className="auth-input stagger-in"
-            style={{ "--delay": "210ms" } as React.CSSProperties}
-            placeholder="Name (optional)"
-            onChange={(e) =>
-              setName(
-                e.target.value
-              )
-            }
+            style={{ "--delay": "240ms" } as React.CSSProperties}
+            placeholder="Email"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            required
           />
-        )}
 
-        <input
-          className="auth-input stagger-in"
-          style={{ "--delay": "240ms" } as React.CSSProperties}
-          placeholder="Email"
-          onChange={(e) =>
-            setEmail(
-              e.target.value
-            )
-          }
-        />
+          <input
+            type="password"
+            autoComplete={mode === "signin" ? "current-password" : "new-password"}
+            minLength={mode === "signup" ? 8 : undefined}
+            className="auth-input stagger-in"
+            style={{ "--delay": "270ms" } as React.CSSProperties}
+            placeholder="Password"
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            required
+          />
 
-        <input
-          type="password"
-          className="auth-input stagger-in"
-          style={{ "--delay": "270ms" } as React.CSSProperties}
-          placeholder="Password"
-          onChange={(e) =>
-            setPassword(
-              e.target.value
-            )
-          }
-        />
-
-        <button
-          onClick={
-            mode === "signin"
-              ? handleLogin
-              : handleRegister
-          }
-          disabled={loading}
-          className="auth-submit stagger-in"
-          style={{ "--delay": "300ms" } as React.CSSProperties}
-        >
-          {loading
-            ? "Please wait..."
-            : mode === "signin"
-            ? "Login"
-            : "Create Account"}
-        </button>
+          <button
+            type="submit"
+            disabled={loading}
+            className="auth-submit stagger-in"
+            style={{ "--delay": "300ms" } as React.CSSProperties}
+          >
+            {loading ? "Please wait..." : mode === "signin" ? "Login" : "Create Account"}
+          </button>
+        </form>
 
         {error && (
           <p className="auth-error">{error}</p>

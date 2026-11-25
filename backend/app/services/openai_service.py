@@ -3,6 +3,7 @@ from typing import List
 
 from dotenv import load_dotenv
 from openai import AzureOpenAI
+from pathlib import Path
 
 load_dotenv()
 
@@ -39,8 +40,12 @@ class AzureOpenAIService:
         return response.choices[0].message.content or ""
 
     def generate_response(self, prompt: str) -> str:
+        SYSTEM_PROMPT = (
+            Path(__file__).resolve().parents[2] / "prompts" / "system_prompt.txt"
+        ).read_text(encoding="utf-8")
+        
         return self.chat([
-            {"role": "system", "content": "You are a helpful assistant."},
+            {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": prompt},
         ])
 

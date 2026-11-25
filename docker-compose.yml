@@ -11,6 +11,9 @@ services:
     env_file:
       - ./backend/.env
 
+    environment:
+      COOKIE_SECURE: "false"
+
     volumes:
       - ./backend:/app
 
@@ -23,6 +26,9 @@ services:
 
     ports:
       - "5173:5173"
+
+    environment:
+      BACKEND_URL: http://backend:8000
 
     volumes:
       - ./frontend:/app

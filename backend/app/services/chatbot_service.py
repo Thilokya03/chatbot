@@ -46,7 +46,7 @@ class ChatbotService:
         if not self.cosmos.ensure_connected():
             raise RuntimeError(self.cosmos.last_error or "Cosmos DB is unavailable")
 
-    def create_chatbot(self, payload: ChatbotCreate) -> Dict:
+    def create_chatbot(self, payload: ChatbotCreate, owner_user_id: Optional[str] = None) -> Dict:
         chatbot = Chatbot(
             id=f"cb_{uuid.uuid4().hex[:8]}",
             name=payload.name,
@@ -56,6 +56,8 @@ class ChatbotService:
             created_at=datetime.utcnow().date().isoformat(),
         )
         payload = chatbot.model_dump()
+        if owner_user_id:
+            payload["owner_user_id"] = owner_user_id
         self._ensure_cosmos()
         return self.cosmos.upsert_item(self.cosmos.chatbot_container_name, payload)
 

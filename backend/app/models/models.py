@@ -56,6 +56,11 @@ class Conversation(BaseModel):
 class ChatRequest(BaseModel):
     chatbot_id: str
     message: str
+    conversation_id: Optional[str] = None
+
+
+class ConversationCreate(BaseModel):
+    title: str = "New chat"
 
 
 class ChatResponse(BaseModel):
