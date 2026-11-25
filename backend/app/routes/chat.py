@@ -65,7 +65,6 @@ def _conversation_for_chat(chatbot_id: str, conversation_id: str | None) -> dict
 
 
 @router.post("/chat", response_model=ChatResponse)
-@router.post("/chat", response_model=ChatResponse)
 def chat(
     payload: ChatRequest,
     x_api_key: str = Header(default="", alias="x-api-key"),
