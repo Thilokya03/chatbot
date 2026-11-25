@@ -5,9 +5,13 @@ from pydantic import BaseModel, Field
 
 
 class ChatbotCreate(BaseModel):
-    name: str
+    name: str = Field(min_length=1, max_length=100)
     type: Literal["normal", "knowledge_base"] = "normal"
     kb_id: Optional[str] = None
+
+
+class ChatbotRename(BaseModel):
+    name: str = Field(min_length=1, max_length=100)
 
 
 class Chatbot(BaseModel):
@@ -25,6 +29,17 @@ class ChatbotPublic(BaseModel):
     type: Literal["normal", "knowledge_base"]
     kb_id: Optional[str] = None
     created_at: str
+    is_default: bool = False
+    owned_by_user: bool = False
+    can_manage: bool = False
+
+
+class ChatbotUsage(BaseModel):
+    chatbot_id: str
+    chatbot_name: str
+    conversation_count: int
+    message_count: int
+    last_activity_at: Optional[str] = None
 
 
 class KnowledgeBaseCreate(BaseModel):
@@ -76,3 +91,12 @@ class UserCreate(BaseModel):
 class UserLogin(BaseModel):
     email: str
     password: str
+
+
+class UserProfileUpdate(BaseModel):
+    name: str
+
+
+class UserPasswordUpdate(BaseModel):
+    current_password: str
+    new_password: str

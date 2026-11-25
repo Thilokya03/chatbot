@@ -17,6 +17,12 @@ export const logoutUser = () =>
 export const me = () =>
   api.get("/auth/me");
 
+export const updateProfile = (data: { name: string }) =>
+  api.put("/auth/profile", data);
+
+export const updatePassword = (data: { current_password: string; new_password: string }) =>
+  api.put("/auth/password", data);
+
 export type AuthUser = {
   id: string;
   email: string;

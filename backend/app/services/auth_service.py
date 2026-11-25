@@ -131,3 +131,36 @@ class AuthService:
         self._ensure_cosmos()
         return self.cosmos.get_item(self.cosmos.user_container_name, "id", user_id)
 
+    def update_user_name(self, user_id: str, name: str) -> Dict:
+        self._ensure_cosmos()
+        user = self.get_user_by_id(user_id)
+        if not user:
+            raise ValueError("User not found")
+
+        normalized_name = (name or "").strip()
+        if not normalized_name:
+            raise ValueError("Name is required")
+
+        user["name"] = normalized_name
+        return self.cosmos.upsert_item(self.cosmos.user_container_name, user)
+
+    def update_user_password(self, user_id: str, current_password: str, new_password: str) -> None:
+        self._ensure_cosmos()
+        user = self.get_user_by_id(user_id)
+        if not user:
+            raise ValueError("User not found")
+
+        expected = user.get("password_hash", "")
+        salt = user.get("password_salt", "")
+        if not expected or not salt or self._hash_password(current_password, salt) != expected:
+            raise ValueError("Current password is incorrect")
+
+        next_password = (new_password or "").strip()
+        if len(next_password) < 8:
+            raise ValueError("New password must be at least 8 characters")
+
+        next_salt = secrets.token_hex(16)
+        user["password_salt"] = next_salt
+        user["password_hash"] = self._hash_password(next_password, next_salt)
+        self.cosmos.upsert_item(self.cosmos.user_container_name, user)
+

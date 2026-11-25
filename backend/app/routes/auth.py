@@ -2,11 +2,14 @@ import os
 
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Response
 
-from app.models.models import UserCreate, UserLogin
+from app.models.models import UserCreate, UserLogin, UserPasswordUpdate, UserProfileUpdate
+from app.utils.auth import get_current_user
 from app.services.auth_service import AuthService
+from app.services.chatbot_service import ChatbotService
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 auth_service = AuthService()
+chatbot_service = ChatbotService()
 
 SESSION_COOKIE_NAME = "session_id"
 COOKIE_SECURE = os.getenv("COOKIE_SECURE", "false").lower() == "true"
@@ -51,6 +54,7 @@ def login(payload: UserLogin, response: Response):
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
     try:
+        chatbot_service.ensure_default_chatbot(user["id"])
         session = auth_service.create_session(user["id"])
     except RuntimeError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
@@ -97,4 +101,28 @@ def me(session_id: str = Cookie(default="", alias=SESSION_COOKIE_NAME)):
         raise HTTPException(status_code=401, detail="User not found")
 
     return _sanitize_user(user)
+
+
+@router.put("/profile")
+def update_profile(payload: UserProfileUpdate, user: dict = Depends(get_current_user)):
+    try:
+        updated_user = auth_service.update_user_name(user["id"], payload.name)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+    return {"ok": True, "user": _sanitize_user(updated_user)}
+
+
+@router.put("/password")
+def update_password(payload: UserPasswordUpdate, user: dict = Depends(get_current_user)):
+    try:
+        auth_service.update_user_password(user["id"], payload.current_password, payload.new_password)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except RuntimeError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+    return {"ok": True}
 

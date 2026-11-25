@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import axios from "axios";
 import {
   Bot,
@@ -6,16 +6,22 @@ import {
   Database,
   LogOut,
   MessageCircle,
+  Moon,
+  PanelLeftClose,
+  PanelLeftOpen,
   Plus,
   RefreshCw,
   Search,
   Send,
+  Settings2,
   Sparkles,
+  Sun,
   Trash2,
+  X,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
-import { logoutUser, me } from "../api/auth";
+import { logoutUser, me, updatePassword, updateProfile } from "../api/auth";
 import {
   createConversation,
   deleteConversation,
@@ -23,7 +29,7 @@ import {
   getConversations,
   sendMessage,
 } from "../api/chat";
-import { createChatbot, getChatbots } from "../api/chatbot";
+import { createChatbot, deleteChatbot, getChatbots, renameChatbot } from "../api/chatbot";
 import { createKnowledgeBase, uploadKnowledgeDocument } from "../api/knowledgeBase";
 import { getApiErrorMessage } from "../api/client";
 import { useAuthStore } from "../store/authStore";
@@ -31,8 +37,21 @@ import type { Conversation, Message } from "../types/chat";
 import type { Chatbot, CreateChatbotRequest } from "../types/chatbot";
 import "../App.css";
 
-export default function DashboardPage() {
+type ThemeMode = "light-chat" | "dark-chat";
+
+type DashboardPageProps = {
+  theme: ThemeMode;
+  onThemeChange: (theme: ThemeMode) => void;
+};
+
+const themeOptions: Array<{ value: ThemeMode; label: string }> = [
+  { value: "light-chat", label: "Light" },
+  { value: "dark-chat", label: "Dark" },
+];
+
+export default function DashboardPage({ theme, onThemeChange }: DashboardPageProps) {
   const navigate = useNavigate();
+  const activeChatRef = useRef<HTMLElement>(null);
   const { user, setUser } = useAuthStore();
   const [chatbots, setChatbots] = useState<Chatbot[]>([]);
   const [selectedChatbotId, setSelectedChatbotId] = useState("");
@@ -48,8 +67,7 @@ export default function DashboardPage() {
   const [newBotKbId, setNewBotKbId] = useState("");
   const [newKbName, setNewKbName] = useState("");
   const [newKbId, setNewKbId] = useState("");
-  const [uploadFilename, setUploadFilename] = useState("");
-  const [uploadApiKey, setUploadApiKey] = useState("");
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
 
   const [checkingAuth, setCheckingAuth] = useState(true);
   const [loadingChatbots, setLoadingChatbots] = useState(false);
@@ -58,7 +76,12 @@ export default function DashboardPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
-
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(() => localStorage.getItem("sidebar-hidden") !== "true");
+  const [renameChatbotName, setRenameChatbotName] = useState("");
+  const [accountName, setAccountName] = useState(user?.name ?? "");
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
   const selectedChatbot = useMemo(
     () => chatbots.find((bot) => bot.id === selectedChatbotId) ?? null,
     [chatbots, selectedChatbotId],
@@ -87,14 +110,24 @@ export default function DashboardPage() {
     ),
     [conversations, conversationSearch],
   );
+  const ownedChatbotCount = useMemo(
+    () => chatbots.filter((bot) => bot.owned_by_user).length,
+    [chatbots],
+  );
+
+  useEffect(() => {
+    localStorage.setItem("sidebar-hidden", String(!sidebarOpen));
+  }, [sidebarOpen]);
 
   const refreshChatbots = useCallback(async () => {
     setLoadingChatbots(true);
     try {
       const { data } = await getChatbots();
       setChatbots(data);
+      return data;
     } catch (requestError) {
       setError(getApiErrorMessage(requestError, "Could not load chatbots."));
+      return [];
     } finally {
       setLoadingChatbots(false);
     }
@@ -121,7 +154,16 @@ export default function DashboardPage() {
     me().then(async ({ data }) => {
       if (!active) return;
       setUser(data);
-      await refreshChatbots();
+      setAccountName(data.name ?? "");
+      const availableChatbots = await refreshChatbots();
+      const initialChatbot = availableChatbots.find((bot) => bot.is_default && bot.owned_by_user)
+        ?? availableChatbots.find((bot) => bot.owned_by_user)
+        ?? availableChatbots[0];
+      if (active && initialChatbot) {
+        setSelectedChatbotId(initialChatbot.id);
+        setRenameChatbotName(initialChatbot.name);
+        await refreshConversations(initialChatbot.id);
+      }
       if (active) setCheckingAuth(false);
     }).catch((requestError: unknown) => {
       if (!active) return;
@@ -136,14 +178,18 @@ export default function DashboardPage() {
     return () => {
       active = false;
     };
-  }, [navigate, refreshChatbots, setUser]);
+  }, [navigate, refreshChatbots, refreshConversations, setUser]);
 
   async function handleSelectChatbot(chatbotId: string) {
     setSelectedChatbotId(chatbotId);
+    setRenameChatbotName(chatbots.find((bot) => bot.id === chatbotId)?.name ?? "");
     setConversations([]);
     setSelectedConversationId("");
     setMessages([]);
     await refreshConversations(chatbotId);
+    if (window.matchMedia("(max-width: 640px)").matches) {
+      window.requestAnimationFrame(() => activeChatRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
+    }
   }
 
   async function handleSelectConversation(conversationId: string) {
@@ -154,6 +200,9 @@ export default function DashboardPage() {
     try {
       const { data } = await getConversation(selectedChatbotId, conversationId);
       setMessages(data.messages ?? []);
+      if (window.matchMedia("(max-width: 640px)").matches) {
+        window.requestAnimationFrame(() => activeChatRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
+      }
     } catch (requestError) {
       setMessages([]);
       setError(getApiErrorMessage(requestError, "Could not load this conversation."));
@@ -178,20 +227,16 @@ export default function DashboardPage() {
         setError("Enter a chatbot name.");
         return;
       }
-      if (payload.type === "knowledge_base" && !payload.kb_id) {
-        setError("Enter the knowledge base ID for this chatbot.");
-        return;
-      }
       const { data } = await createChatbot(payload);
-      setUploadApiKey(data.api_key);
       setNewBotName("");
       await refreshChatbots();
       setSelectedChatbotId(data.id);
+      setRenameChatbotName(data.name);
       setConversations([]);
       setSelectedConversationId("");
       setMessages([]);
       await refreshConversations(data.id);
-      setNotice(`Created ${data.name}. Select it from the chatbot list to start chatting.`);
+      setNotice(`Created ${data.name}.`);
     } catch (requestError) {
       setError(getApiErrorMessage(requestError, "Could not create chatbot."));
     } finally {
@@ -221,23 +266,22 @@ export default function DashboardPage() {
 
   async function handleUploadDocument(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!selectedChatbot?.kb_id || !uploadFilename.trim() || !uploadApiKey.trim()) {
-      setError("Choose a knowledge-base chatbot and provide the backend filename and API key.");
+    if (!selectedChatbot?.kb_id || !uploadFile) {
+      setError("Choose a knowledge-base chatbot and select a document to upload.");
+      return;
+    }
+    if (uploadFile.size > 10 * 1024 * 1024) {
+      setError("File size must not exceed 10 MB.");
       return;
     }
     setError("");
     setSubmitting(true);
     try {
-      await uploadKnowledgeDocument({
-        chatbot_id: selectedChatbot.id,
-        kb_id: selectedChatbot.kb_id,
-        filename: uploadFilename.trim(),
-        apiKey: uploadApiKey.trim(),
-      });
-      setNotice("Document linked to the chatbot knowledge base.");
-      setUploadFilename("");
+      await uploadKnowledgeDocument(selectedChatbot.id, uploadFile);
+      setNotice(`${uploadFile.name} uploaded to ${selectedChatbot.name}.`);
+      setUploadFile(null);
     } catch (requestError) {
-      setError(getApiErrorMessage(requestError, "Could not link document."));
+      setError(getApiErrorMessage(requestError, "Could not upload document."));
     } finally {
       setSubmitting(false);
     }
@@ -254,6 +298,23 @@ export default function DashboardPage() {
       setMessages([]);
     } catch (requestError) {
       setError(getApiErrorMessage(requestError, "Could not create a new chat."));
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function handleSuggestedPrompt(prompt: string) {
+    if (!selectedChatbot) return;
+    setError("");
+    setSubmitting(true);
+    try {
+      const { data } = await createConversation(selectedChatbot.id);
+      setConversations((current) => [data, ...current]);
+      setSelectedConversationId(data.id);
+      setMessages([]);
+      setChatInput(prompt);
+    } catch (requestError) {
+      setError(getApiErrorMessage(requestError, "Could not start a conversation."));
     } finally {
       setSubmitting(false);
     }
@@ -307,6 +368,89 @@ export default function DashboardPage() {
     navigate("/", { replace: true });
   }
 
+  async function handleRenameChatbot(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!selectedChatbot) return;
+    const nextName = renameChatbotName.trim();
+    if (!nextName) {
+      setError("Enter a chatbot name.");
+      return;
+    }
+
+    setError("");
+    setSubmitting(true);
+    try {
+      await renameChatbot(selectedChatbot.id, nextName);
+      setChatbots((current) => current.map((bot) => (bot.id === selectedChatbot.id ? { ...bot, name: nextName } : bot)));
+      setNotice("Chatbot name updated.");
+    } catch (requestError) {
+      setError(getApiErrorMessage(requestError, "Could not rename this chatbot."));
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function handleDeleteChatbot() {
+    if (!selectedChatbot || !window.confirm(`Delete "${selectedChatbot.name}" and its chat history?`)) return;
+    setError("");
+    setSubmitting(true);
+    try {
+      await deleteChatbot(selectedChatbot.id);
+      const remaining = await refreshChatbots();
+      setSelectedChatbotId("");
+      setConversations([]);
+      setSelectedConversationId("");
+      setMessages([]);
+      setUploadFile(null);
+      const nextChatbot = remaining.find((bot) => bot.is_default && bot.owned_by_user)
+        ?? remaining.find((bot) => bot.owned_by_user)
+        ?? remaining[0];
+      setRenameChatbotName(nextChatbot?.name ?? "");
+      if (nextChatbot) {
+        setSelectedChatbotId(nextChatbot.id);
+        await refreshConversations(nextChatbot.id);
+      }
+      setNotice("Chatbot deleted.");
+    } catch (requestError) {
+      setError(getApiErrorMessage(requestError, "Could not delete this chatbot."));
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function handleUpdateName(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError("");
+    setNotice("");
+    setSubmitting(true);
+    try {
+      const { data } = await updateProfile({ name: accountName.trim() });
+      setUser(data.user);
+      setNotice("Profile name updated.");
+    } catch (requestError) {
+      setError(getApiErrorMessage(requestError, "Could not update your profile."));
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function handleUpdatePassword(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError("");
+    setNotice("");
+    setSubmitting(true);
+    try {
+      await updatePassword({ current_password: currentPassword, new_password: newPassword });
+      setCurrentPassword("");
+      setNewPassword("");
+      setNotice("Password updated.");
+    } catch (requestError) {
+      setError(getApiErrorMessage(requestError, "Could not update your password."));
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
   if (checkingAuth) {
     return <main className="p-8">Checking your session...</main>;
   }
@@ -326,12 +470,14 @@ export default function DashboardPage() {
           Your personal assistant studio
         </div>
         <div className="dashboard-actions">
-          <div className="user-chip">
-            <span className="user-avatar">{(user.name || user.email).slice(0, 1).toUpperCase()}</span>
-            <span className="user-email">{user.name || user.email}</span>
-          </div>
-          <button type="button" onClick={handleLogout} className="icon-btn logout-btn" aria-label="Log out" title="Log out">
-            <LogOut size={17} />
+          <button
+            type="button"
+            className="icon-btn"
+            aria-label={sidebarOpen ? "Hide assistant sidebar" : "Show assistant sidebar"}
+            title={sidebarOpen ? "Hide assistant sidebar" : "Show assistant sidebar"}
+            onClick={() => setSidebarOpen((open) => !open)}
+          >
+            {sidebarOpen ? <PanelLeftClose size={17} /> : <PanelLeftOpen size={17} />}
           </button>
         </div>
       </header>
@@ -346,13 +492,12 @@ export default function DashboardPage() {
         </div>
       )}
 
-      <div className="chat-workspace">
+      <div className={`chat-workspace ${sidebarOpen ? "" : "sidebar-collapsed"} ${settingsOpen ? "" : "settings-closed"}`}>
         <aside className="chat-sidebar workspace-panel" aria-label="Assistant navigation">
           <div className="sidebar-section-heading">
-            <div>
-              <span className="eyebrow">YOUR SPACE</span>
-              <h2>Assistants <span className="count-pill">{chatbots.length}</span></h2>
-            </div>
+            <span className="count-pill" aria-label={`${ownedChatbotCount} of 10 assistants`} title={`${ownedChatbotCount} of 10 assistants`}>
+              {ownedChatbotCount}/10
+            </span>
             <button
               type="button"
               className="icon-btn subtle"
@@ -412,6 +557,7 @@ export default function DashboardPage() {
                 placeholder="e.g. Research buddy"
                 value={newBotName}
                 onChange={(event) => setNewBotName(event.target.value)}
+                maxLength={100}
                 required
               />
               <label className="field-label" htmlFor="new-bot-type">Assistant type</label>
@@ -425,16 +571,18 @@ export default function DashboardPage() {
                 <option value="knowledge_base">Knowledge assistant</option>
               </select>
               {newBotType === "knowledge_base" && (
-                <input
-                  className="auth-input"
-                  placeholder="Knowledge base ID"
-                  value={newBotKbId}
-                  onChange={(event) => setNewBotKbId(event.target.value)}
-                  required
-                  aria-label="Knowledge base ID"
-                />
+                <>
+                  <input
+                    className="auth-input"
+                    placeholder="Knowledge base ID (optional)"
+                    value={newBotKbId}
+                    onChange={(event) => setNewBotKbId(event.target.value)}
+                    aria-label="Knowledge base ID"
+                  />
+                  <span className="sidebar-hint">Leave blank to create a fresh document library.</span>
+                </>
               )}
-              <button type="submit" className="primary-btn" disabled={submitting}>
+              <button type="submit" className="primary-btn" disabled={submitting || ownedChatbotCount >= 10}>
                 {submitting ? "Creating…" : "Create assistant"}
               </button>
             </form>
@@ -455,104 +603,182 @@ export default function DashboardPage() {
             </form>
             {newKbId && <p className="kb-created">Created ID <code>{newKbId}</code></p>}
             <form onSubmit={handleUploadDocument}>
-              <label className="field-label" htmlFor="document-name">Link an uploaded document</label>
-              <input
-                id="document-name"
-                className="auth-input"
-                placeholder="Backend filename"
-                value={uploadFilename}
-                onChange={(event) => setUploadFilename(event.target.value)}
-              />
-              <input
-                className="auth-input"
-                placeholder="Chatbot API key"
-                value={uploadApiKey}
-                onChange={(event) => setUploadApiKey(event.target.value)}
-                aria-label="Chatbot API key"
-              />
-              <button type="submit" className="secondary-btn" disabled={submitting}>Link document</button>
+              <span className="field-label">Upload to the selected knowledge chatbot</span>
+              <label
+                className="document-dropzone"
+                onDragOver={(event) => event.preventDefault()}
+                onDrop={(event) => {
+                  event.preventDefault();
+                  setUploadFile(event.dataTransfer.files[0] ?? null);
+                }}
+              >
+                <input
+                  type="file"
+                  accept=".pdf,.docx,.txt"
+                  onChange={(event) => {
+                    setUploadFile(event.target.files?.[0] ?? null);
+                    event.currentTarget.value = "";
+                  }}
+                  disabled={selectedChatbot?.type !== "knowledge_base"}
+                  aria-label="Choose a PDF, DOCX or TXT document"
+                />
+                <Database size={18} />
+                <span>{uploadFile?.name ?? "Drop a file here or browse"}</span>
+                <small>PDF, DOCX or TXT · 10 MB max</small>
+              </label>
+              <button
+                type="submit"
+                className="secondary-btn"
+                disabled={submitting || selectedChatbot?.type !== "knowledge_base" || !uploadFile}
+              >
+                Upload document
+              </button>
+              {!selectedChatbot && <span className="sidebar-hint">Select a knowledge chatbot first.</span>}
             </form>
           </details>
 
+          <details className="management-panel">
+            <summary><span className="manage-icon"><Sparkles size={16} /></span><span>Account settings</span><ChevronDown size={15} /></summary>
+            <form onSubmit={handleUpdateName}>
+              <label className="field-label" htmlFor="account-name">Display name</label>
+              <input
+                id="account-name"
+                className="auth-input"
+                value={accountName}
+                onChange={(event) => setAccountName(event.target.value)}
+                required
+              />
+              <button type="submit" className="secondary-btn" disabled={submitting}>Update name</button>
+            </form>
+            <form onSubmit={handleUpdatePassword}>
+              <label className="field-label" htmlFor="current-password">Current password</label>
+              <input
+                id="current-password"
+                className="auth-input"
+                type="password"
+                value={currentPassword}
+                onChange={(event) => setCurrentPassword(event.target.value)}
+                required
+              />
+              <label className="field-label" htmlFor="new-password">New password</label>
+              <input
+                id="new-password"
+                className="auth-input"
+                type="password"
+                value={newPassword}
+                onChange={(event) => setNewPassword(event.target.value)}
+                required
+              />
+              <button type="submit" className="secondary-btn" disabled={submitting}>Change password</button>
+            </form>
+          </details>
           <div className="sidebar-footer">
-            <span className="footer-orbit"><Sparkles size={14} /></span>
-            <span>Make space for better ideas.</span>
-          </div>
-        </aside>
-
-        <aside className="conversation-sidebar workspace-panel" aria-label="Chat history">
-          <div className="sidebar-section-heading chats-heading">
-            <div>
-              <span className="eyebrow">{selectedChatbot ? selectedChatbot.name : "SELECT AN ASSISTANT"}</span>
-              <h2>Chat history <span className="count-pill">{conversations.length}</span></h2>
+            <div className="user-chip sidebar-user-chip">
+              <span className="user-avatar">{(user.name || user.email).slice(0, 1).toUpperCase()}</span>
+              <span className="user-email">{user.name || user.email}</span>
             </div>
             <button
               type="button"
-              className="icon-btn add-chat-btn"
-              onClick={() => void handleNewConversation()}
-              disabled={!selectedChatbot || submitting}
-              aria-label="Start a new chat"
-              title="Start a new chat"
+              className="sidebar-utility-button"
+              aria-label={settingsOpen ? "Hide workspace settings" : "Show workspace settings"}
+              onClick={() => setSettingsOpen((value) => !value)}
             >
-              <Plus size={18} />
+              <Settings2 size={16} />
+              <span>{settingsOpen ? "Close workspace settings" : "Workspace settings"}</span>
+            </button>
+            <div className="sidebar-theme-control">
+              <span className="sidebar-theme-label">Appearance</span>
+              <div className="theme-switcher sidebar-theme-switcher" role="group" aria-label="Choose appearance">
+                {themeOptions.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => onThemeChange(option.value)}
+                    className={theme === option.value ? "is-active" : ""}
+                    aria-pressed={theme === option.value}
+                  >
+                    {option.value === "light-chat" ? <Sun size={14} /> : <Moon size={14} />}
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <button type="button" onClick={handleLogout} className="sidebar-utility-button sidebar-logout-button">
+              <LogOut size={16} />
+              <span>Log out</span>
             </button>
           </div>
-          <label className="search-field">
-            <Search size={16} aria-hidden="true" />
-            <input
-              aria-label="Search chat history"
-              placeholder="Search conversations"
-              value={conversationSearch}
-              onChange={(event) => setConversationSearch(event.target.value)}
-              disabled={!selectedChatbot}
-            />
-          </label>
-          {!selectedChatbot && <div className="sidebar-empty compact"><MessageCircle size={20} /><span>Choose an assistant to see your chats.</span></div>}
-          {loadingConversations && <p className="sidebar-hint">Loading conversations…</p>}
-          {selectedChatbot && !loadingConversations && conversations.length === 0 && (
-            <div className="sidebar-empty compact"><MessageCircle size={20} /><span>No chats yet. Start a new conversation.</span></div>
-          )}
-          {selectedChatbot && !loadingConversations && conversations.length > 0 && filteredConversations.length === 0 && (
-            <p className="sidebar-hint">No conversations match that search.</p>
-          )}
-          <nav className="conversation-list" aria-label="Conversations">
-            {filteredConversations.map((conversation) => (
-              <div
-                key={conversation.id}
-                className={`conversation-list-item ${conversation.id === selectedConversationId ? "selected" : ""}`}
-              >
-                <button
-                  type="button"
-                  className="conversation-select"
-                  onClick={() => void handleSelectConversation(conversation.id)}
-                  disabled={submitting}
-                >
-                  <span className="conversation-icon"><MessageCircle size={16} /></span>
-                  <span className="conversation-copy">
-                    <strong>{conversation.title || "New chat"}</strong>
-                    <small>{conversation.messages.length} {conversation.messages.length === 1 ? "message" : "messages"}</small>
-                  </span>
-                </button>
-                <button
-                  type="button"
-                  className="conversation-delete"
-                  onClick={() => void handleDeleteConversation(conversation.id)}
-                  disabled={submitting}
-                  aria-label={`Delete ${conversation.title || "conversation"}`}
-                  title="Delete conversation"
-                >
-                  <Trash2 size={15} />
-                </button>
+
+          <section className="sidebar-history" aria-label="Chat history">
+            <div className="sidebar-section-heading chats-heading">
+              <div>
+                <span className="eyebrow">{selectedChatbot ? selectedChatbot.name : "SELECT AN ASSISTANT"}</span>
+                <h2>Chat history <span className="count-pill">{conversations.length}</span></h2>
               </div>
-            ))}
-          </nav>
-          <div className="history-tip">
-            <span className="tip-star"><Sparkles size={14} /></span>
-            <p>Your chats stay organized by assistant. Switch assistants to explore their separate histories.</p>
-          </div>
+              <button
+                type="button"
+                className="icon-btn add-chat-btn"
+                onClick={() => void handleNewConversation()}
+                disabled={!selectedChatbot || submitting}
+                aria-label="Start a new chat"
+                title="Start a new chat"
+              >
+                <Plus size={18} />
+              </button>
+            </div>
+            <label className="search-field">
+              <Search size={16} aria-hidden="true" />
+              <input
+                aria-label="Search chat history"
+                placeholder="Search conversations"
+                value={conversationSearch}
+                onChange={(event) => setConversationSearch(event.target.value)}
+                disabled={!selectedChatbot}
+              />
+            </label>
+            {!selectedChatbot && <div className="sidebar-empty compact"><MessageCircle size={20} /><span>Choose an assistant to see your chats.</span></div>}
+            {loadingConversations && <p className="sidebar-hint">Loading conversations…</p>}
+            {selectedChatbot && !loadingConversations && conversations.length === 0 && (
+              <div className="sidebar-empty compact"><MessageCircle size={20} /><span>No chats yet. Start a new conversation.</span></div>
+            )}
+            {selectedChatbot && !loadingConversations && conversations.length > 0 && filteredConversations.length === 0 && (
+              <p className="sidebar-hint">No conversations match that search.</p>
+            )}
+            <nav className="conversation-list" aria-label="Conversations">
+              {filteredConversations.map((conversation) => (
+                <div
+                  key={conversation.id}
+                  className={`conversation-list-item ${conversation.id === selectedConversationId ? "selected" : ""}`}
+                >
+                  <button
+                    type="button"
+                    className="conversation-select"
+                    onClick={() => void handleSelectConversation(conversation.id)}
+                    disabled={submitting}
+                  >
+                    <span className="conversation-icon"><MessageCircle size={16} /></span>
+                    <span className="conversation-copy">
+                      <strong>{conversation.title || "New chat"}</strong>
+                      <small>{conversation.messages.length} {conversation.messages.length === 1 ? "message" : "messages"}</small>
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    className="conversation-delete"
+                    onClick={() => void handleDeleteConversation(conversation.id)}
+                    disabled={submitting}
+                    aria-label={`Delete ${conversation.title || "conversation"}`}
+                    title="Delete conversation"
+                  >
+                    <Trash2 size={15} />
+                  </button>
+                </div>
+              ))}
+            </nav>
+          </section>
         </aside>
 
-        <section className="active-chat workspace-panel" aria-label="Chat conversation">
+        <section ref={activeChatRef} className="active-chat workspace-panel" aria-label="Chat conversation">
           <div className="active-chat-heading">
             <div className="active-chat-title-wrap">
               <div className="chatbot-avatar" aria-hidden="true">
@@ -588,6 +814,22 @@ export default function DashboardPage() {
                 <span className="eyebrow">A FRESH PAGE</span>
                 <h3>What would you like<br />to work on?</h3>
                 <p>Start a new chat with {selectedChatbot.name}. Your conversations stay separate and easy to find.</p>
+                <div className="prompt-suggestions">
+                  <span>Or start with a prompt</span>
+                  {(selectedChatbot.type === "knowledge_base"
+                    ? ["Summarize my documents", "Find key details in my files", "Answer a question about my documents"]
+                    : ["Help me plan my week", "Draft a message", "Explain a complex idea"]
+                  ).map((prompt) => (
+                    <button
+                      type="button"
+                      key={prompt}
+                      onClick={() => void handleSuggestedPrompt(prompt)}
+                      disabled={submitting}
+                    >
+                      {prompt}
+                    </button>
+                  ))}
+                </div>
                 <button type="button" className="primary-btn welcome-start" onClick={() => void handleNewConversation()} disabled={submitting}>
                   <Plus size={17} /> Start a conversation
                 </button>
@@ -643,6 +885,54 @@ export default function DashboardPage() {
             <p className="composer-caption">Press <kbd>Enter</kbd> to send <span>·</span> <kbd>Shift</kbd> + <kbd>Enter</kbd> for a new line</p>
           </div>
         </section>
+
+        {settingsOpen && (
+          <aside className="conversation-sidebar workspace-panel" aria-label="Settings panel">
+            <div className="sidebar-section-heading settings-panel-heading">
+              <div>
+                <span className="eyebrow">SETTINGS</span>
+                <h2>Dashboard settings</h2>
+              </div>
+              <button
+                type="button"
+                className="icon-btn subtle"
+                onClick={() => setSettingsOpen(false)}
+                aria-label="Close workspace settings"
+                title="Close workspace settings"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <details className="management-panel" open>
+              <summary><span className="manage-icon"><Bot size={16} /></span><span>Chatbot settings</span><ChevronDown size={15} /></summary>
+              <form onSubmit={handleRenameChatbot}>
+                <label className="field-label" htmlFor="rename-chatbot">Rename chatbot</label>
+                <input
+                  id="rename-chatbot"
+                  className="auth-input"
+                  value={renameChatbotName}
+                  onChange={(event) => setRenameChatbotName(event.target.value)}
+                  placeholder="Select chatbot first"
+                  disabled={!selectedChatbot}
+                />
+                <p className="sidebar-hint" style={{ margin: 0 }}>
+                  Type: {selectedChatbot ? (selectedChatbot.type === "knowledge_base" ? "Knowledge assistant" : "General assistant") : "-"}
+                </p>
+                <button type="submit" className="secondary-btn" disabled={!selectedChatbot?.can_manage || submitting}>Save chatbot</button>
+              </form>
+              <button
+                type="button"
+                className="secondary-btn danger-btn"
+                disabled={!selectedChatbot?.can_manage || submitting}
+                onClick={() => void handleDeleteChatbot()}
+              >
+                <Trash2 size={14} /> Delete selected chatbot
+              </button>
+            </details>
+
+          </aside>
+        )}
       </div>
     </main>
   );

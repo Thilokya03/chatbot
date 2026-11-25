@@ -1,13 +1,15 @@
-# Anuradhapura Knowledge Chatbot
+# Chatbot Platform
 
-A FastAPI chatbot that uses Azure OpenAI for conversational responses and a Chroma vector store for answering questions from the included Anuradhapura PDF documents.
+A multi-user chatbot workspace powered by Azure OpenAI and Cosmos DB. Users can run general-purpose and document-grounded chatbots, manage conversations, and integrate bots into external applications with per-chatbot API keys.
 
 ## Features
 
-- General-purpose chat endpoint
-- Knowledge-base chat grounded in the ingested PDF documents
-- PDF ingestion and knowledge-base rebuild endpoint
-- In-memory chat history for general and knowledge-base conversations
+- A default general-purpose chatbot is provisioned automatically when a user logs in.
+- Users can create up to 10 chatbots, including knowledge-base chatbots.
+- Multiple conversations are stored per chatbot and titled automatically.
+- Knowledge-base chatbots accept PDF, DOCX, and TXT uploads up to 10 MB.
+- Chatbot API keys and usage summaries are available from the API Access page.
+- Chatbot owners can delete their chatbots and update their profile and password.
 
 ## Project structure
 
@@ -98,18 +100,25 @@ Content-Type: application/json
 }
 ```
 
-### Knowledge-base chat
+### Chat from the workspace or an integration
 
 ```http
-POST /chat/knowledge
+POST /chat
 Content-Type: application/json
+x-api-key: <chatbot-api-key>
 
 {
-  "content": "What was the significance of Anuradhapura?"
+  "chatbot_id": "cb_example",
+  "message": "What does this document say?",
+  "conversation_id": "conv_example"
 }
 ```
 
-The response contains a `reply` generated from the retrieved document context.
+`conversation_id` is optional for API-key integrations. The response contains a `reply`.
+
+### Upload a knowledge-base document
+
+Send a `multipart/form-data` request to `POST /knowledge-bases/upload` with `chatbot_id` and `file` fields. Authenticate with the signed-in session cookie or the chatbot's `x-api-key`. Supported file types are PDF, DOCX, and TXT (maximum 10 MB).
 
 ### Chat history
 
@@ -120,20 +129,12 @@ GET /chat-history?type=knowledge
 
 The `type` query parameter must be `chat` or `knowledge`.
 
-### Rebuild the knowledge base
-
-```http
-POST /rebuild-knowledge-base
-```
-
-This reloads the PDFs in `backend/app/data`, splits them into chunks, creates embeddings, and rebuilds the Chroma knowledge base. Run this after adding or changing source PDFs.
-
 ## Frontend
 
-The `frontend` directory currently contains a placeholder text file. A web UI still needs to be added; until then, use the Swagger UI or call the API directly with a REST client.
+The React/Vite dashboard provides chat history, chatbot creation and management, API access and usage details, profile and password settings, and drag-and-drop document uploads. Start it from the `frontend` directory with `npm install` and `npm run dev`. Set `VITE_API_URL` if the backend is hosted at a different origin.
 
 ## Notes
 
-- Chat history is stored in memory and is reset whenever the API process restarts.
-- Knowledge-base answers are limited to the retrieved PDF context.
+- Conversations and chatbot configuration are stored in Cosmos DB.
+- Knowledge-base document text is chunked and embedded for retrieval.
 - Keep Azure OpenAI credentials in environment variables rather than source files.

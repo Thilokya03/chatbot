@@ -1,5 +1,7 @@
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
+import { ArrowRight, Bot, Database, Eye, EyeOff, KeyRound, Sparkles } from "lucide-react";
+
 import { loginUser, registerUser } from "../api/auth";
 import { getApiErrorMessage } from "../api/client";
 import { useAuthStore } from "../store/authStore";
@@ -12,10 +14,11 @@ export default function LoginPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
     setLoading(true);
@@ -30,95 +33,135 @@ export default function LoginPage() {
     } catch (requestError) {
       setError(getApiErrorMessage(
         requestError,
-        mode === "signin" ? "Login failed. Check your email and password." : "Could not create your account.",
+        mode === "signin" ? "Sign in failed. Check your email and password." : "Could not create your account.",
       ));
     } finally {
       setLoading(false);
     }
   }
 
+  function changeMode(nextMode: "signin" | "signup") {
+    setMode(nextMode);
+    setError("");
+  }
+
   return (
-    <div className="auth-page page-enter">
-      <div className="auth-card glass-panel stagger-in" style={{ "--delay": "60ms" } as React.CSSProperties}>
-        <h1 className="auth-title stagger-in" style={{ "--delay": "120ms" } as React.CSSProperties}>
-          {mode === "signin" ? "Sign In" : "Sign Up"}
-        </h1>
-        <p className="auth-subtitle stagger-in" style={{ "--delay": "150ms" } as React.CSSProperties}>
-          Access your workspace and manage chatbots faster.
-        </p>
+    <main className="auth-page page-enter">
+      <section className="auth-card glass-panel" aria-label="Account access">
+        <div className="auth-visual">
+          <a className="auth-brand" href="/" aria-label="Orbit home">
+            <span className="brand-mark"><Sparkles size={18} /></span>
+            <span>orbit</span>
+          </a>
 
-        <div className="mode-switch stagger-in" style={{ "--delay": "180ms" } as React.CSSProperties}>
-          <button
-            type="button"
-            onClick={() => {
-              setMode("signin");
-              setError("");
-            }}
-            className={mode === "signin" ? "active" : ""}
-          >
-            Sign In
-          </button>
+          <div className="auth-visual-copy">
+            <span className="eyebrow">YOUR AI WORKSPACE</span>
+            <h2>Make room<br />for bigger ideas.</h2>
+            <p>One calm place to chat, create assistants, and bring your own knowledge.</p>
+          </div>
 
-          <button
-            type="button"
-            onClick={() => {
-              setMode("signup");
-              setError("");
-            }}
-            className={mode === "signup" ? "active" : ""}
-          >
-            Sign Up
-          </button>
+          <div className="auth-orbit-scene" aria-hidden="true">
+            <span className="auth-orbit-ring auth-orbit-ring-one" />
+            <span className="auth-orbit-ring auth-orbit-ring-two" />
+            <span className="auth-orbit-glow" />
+            <span className="auth-orbit-core"><Sparkles size={31} /></span>
+            <span className="auth-float-card auth-float-card-top"><Bot size={16} /> Personal assistants</span>
+            <span className="auth-float-card auth-float-card-bottom"><Database size={16} /> Your knowledge</span>
+          </div>
+
+          <div className="auth-benefits" aria-label="Workspace features">
+            <span><Bot size={15} /> Up to 10 assistants</span>
+            <span><KeyRound size={15} /> Your keys, your control</span>
+          </div>
         </div>
 
-        <form onSubmit={handleSubmit}>
-          {mode === "signup" && (
-            <input
-              className="auth-input stagger-in"
-              style={{ "--delay": "210ms" } as React.CSSProperties}
-              placeholder="Name (optional)"
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-            />
-          )}
+        <div className="auth-content">
+          <span className="auth-content-kicker">{mode === "signin" ? "WELCOME BACK" : "GET STARTED"}</span>
+          <h1 className="auth-title">{mode === "signin" ? "Sign in to Orbit" : "Create your account"}</h1>
+          <p className="auth-subtitle">
+            {mode === "signin"
+              ? "Pick up where your ideas left off."
+              : "Your personal AI workspace is just a few details away."}
+          </p>
 
-          <input
-            type="email"
-            autoComplete="email"
-            className="auth-input stagger-in"
-            style={{ "--delay": "240ms" } as React.CSSProperties}
-            placeholder="Email"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            required
-          />
+          <div className="mode-switch" role="group" aria-label="Choose account action">
+            <button type="button" onClick={() => changeMode("signin")} className={mode === "signin" ? "active" : ""} aria-pressed={mode === "signin"}>
+              Sign in
+            </button>
+            <button type="button" onClick={() => changeMode("signup")} className={mode === "signup" ? "active" : ""} aria-pressed={mode === "signup"}>
+              Create account
+            </button>
+          </div>
 
-          <input
-            type="password"
-            autoComplete={mode === "signin" ? "current-password" : "new-password"}
-            minLength={mode === "signup" ? 8 : undefined}
-            className="auth-input stagger-in"
-            style={{ "--delay": "270ms" } as React.CSSProperties}
-            placeholder="Password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            required
-          />
+          <form onSubmit={handleSubmit} className="auth-form">
+            {mode === "signup" && (
+              <label className="auth-field" htmlFor="account-name">
+                <span>Name <small>Optional</small></span>
+                <input
+                  id="account-name"
+                  className="auth-input"
+                  type="text"
+                  autoComplete="name"
+                  placeholder="How should we address you?"
+                  value={name}
+                  onChange={(event) => setName(event.target.value)}
+                  maxLength={100}
+                />
+              </label>
+            )}
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="auth-submit stagger-in"
-            style={{ "--delay": "300ms" } as React.CSSProperties}
-          >
-            {loading ? "Please wait..." : mode === "signin" ? "Login" : "Create Account"}
-          </button>
-        </form>
+            <label className="auth-field" htmlFor="account-email">
+              <span>Email address</span>
+              <input
+                id="account-email"
+                type="email"
+                autoComplete="email"
+                className="auth-input"
+                placeholder="you@example.com"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                required
+              />
+            </label>
 
-        {error && (
-          <p className="auth-error">{error}</p>
-        )}
-      </div>
-    </div>
+            <label className="auth-field" htmlFor="account-password">
+              <span>Password</span>
+              <span className="password-field">
+                <input
+                  id="account-password"
+                  type={showPassword ? "text" : "password"}
+                  autoComplete={mode === "signin" ? "current-password" : "new-password"}
+                  minLength={mode === "signup" ? 8 : undefined}
+                  className="auth-input"
+                  placeholder={mode === "signup" ? "At least 8 characters" : "Enter your password"}
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  required
+                />
+                <button
+                  type="button"
+                  className="password-visibility"
+                  onClick={() => setShowPassword((visible) => !visible)}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
+                </button>
+              </span>
+            </label>
+
+            {error && <p className="auth-error" role="alert">{error}</p>}
+
+            <button type="submit" disabled={loading} className="auth-submit">
+              {loading ? "Please wait..." : mode === "signin" ? "Sign in" : "Create account"}
+              {!loading && <ArrowRight size={17} />}
+            </button>
+          </form>
+
+          <p className="auth-security-note">
+            <KeyRound size={14} /> Your account and chatbot keys stay private.
+          </p>
+        </div>
+      </section>
+    </main>
   );
 }

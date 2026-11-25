@@ -20,21 +20,21 @@
 }
 
 :root[data-theme="dark-chat"] {
-  --bg-gradient: #11131d;
-  --panel: #191c29;
-  --composer-bg: #171a26;
-  --surface-strong: #202333;
-  --surface-muted: #1d2030;
-  --line: #2c3042;
-  --line-strong: #393e53;
-  --text-primary: #eff0fa;
-  --text-secondary: #b0b4cb;
-  --text-tertiary: #8389a2;
-  --accent: #a99eff;
-  --accent-soft: #4bcab7;
+  --bg-gradient: #080b14;
+  --panel: #111522;
+  --composer-bg: #0e1320;
+  --surface-strong: #181e2e;
+  --surface-muted: #141a29;
+  --line: #272e43;
+  --line-strong: #343d57;
+  --text-primary: #f3f5ff;
+  --text-secondary: #b0b8d0;
+  --text-tertiary: #78839d;
+  --accent: #a99aff;
+  --accent-soft: #607dff;
   --success: #59c7a6;
   --error: #ff8296;
-  --panel-shadow: 0 12px 40px rgba(0, 0, 0, 0.19);
+  --panel-shadow: 0 18px 48px rgba(0, 0, 0, 0.26);
 }
 
 :root[data-theme="light-chat"] {
@@ -70,7 +70,10 @@ body,
 body {
   font-family: var(--font-body);
   color: var(--text-primary);
-  background: var(--bg-gradient);
+  background:
+    radial-gradient(ellipse at 12% 0%, color-mix(in srgb, var(--accent) 13%, transparent), transparent 36rem),
+    radial-gradient(ellipse at 90% 92%, color-mix(in srgb, var(--accent-soft) 11%, transparent), transparent 34rem),
+    var(--bg-gradient);
   background-attachment: fixed;
   transition:
     background 420ms ease,
@@ -83,6 +86,43 @@ body {
   min-height: 100vh;
   padding: 3.7rem 1.1rem 1rem;
   position: relative;
+  isolation: isolate;
+}
+
+.app-shell-dashboard,
+.app-shell-login {
+  height: 100vh;
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.app-shell-dashboard {
+  display: flex;
+  flex-direction: column;
+  padding: 0.65rem 1.1rem;
+}
+
+.app-shell-login {
+  padding: 3.7rem 1.1rem 1rem;
+}
+
+.app-shell-dashboard .dashboard-container {
+  flex: 1;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.app-shell-login .auth-page {
+  height: 100%;
+  min-height: 0;
+  padding: 0;
+}
+
+.app-shell-login .auth-card {
+  height: 100%;
+  min-height: 0;
 }
 
 .glass-panel {
@@ -103,6 +143,11 @@ body {
   gap: 0.24rem;
   background: var(--panel);
   box-shadow: var(--panel-shadow);
+}
+
+.theme-switcher,
+.auth-card {
+  backdrop-filter: blur(18px);
 }
 
 .theme-switcher button {
@@ -173,6 +218,14 @@ body {
 @media (max-width: 768px) {
   .app-shell {
     padding: 4.2rem 0.75rem 0.75rem;
+  }
+
+  .app-shell-dashboard {
+    padding: 0.45rem;
+  }
+
+  .app-shell-login {
+    padding: 4.2rem 0.75rem 0.5rem;
   }
 
   .theme-switcher {
