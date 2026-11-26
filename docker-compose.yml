@@ -1,40 +1,32 @@
-services:
 
+services:
   backend:
     build:
       context: ./backend
     container_name: chatbot-backend
-
     ports:
       - "8000:8000"
-
     env_file:
       - ./backend/.env
-
     environment:
       COOKIE_SECURE: "false"
-
     volumes:
       - ./backend:/app
-
     restart: unless-stopped
 
   frontend:
     build:
       context: ./frontend
     container_name: chatbot-frontend
-
     ports:
       - "5173:5173"
-
     environment:
       BACKEND_URL: http://backend:8000
-
+      CHOKIDAR_USEPOLLING: "true"
     volumes:
       - ./frontend:/app
       - /app/node_modules
-
+    command: npm run dev -- --host 0.0.0.0
     depends_on:
       - backend
-
     restart: unless-stopped
